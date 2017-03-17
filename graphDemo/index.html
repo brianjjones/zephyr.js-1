@@ -8,27 +8,27 @@ http://www.apache.org/licenses/LICENSE-2.0
 -->
 
 <head>
-<script src="https://d3js.org/d3.v3.min.js"></script>
+<script src="d3.min.js">ww</script>
 <script src="d3jsgraph.js"></script>
 </head>
 <body>
     <script>
     var graph1 = new d3jsGraph.Graph({width:900,height:400,lineColor:"red",
-                                      text:"Gyroscope",dataSize:1000,dataMaxVal:40});
-    var graph2 = new d3jsGraph.Graph({left:920,width:900,height:400,
-                                      lineColor:"blue",text:"Accelerometer",
-                                      dataSize:200});
-    var graph3 = new d3jsGraph.Graph({top:420,width:900,height:400,
-                                      lineColor:"green",text:"Gravity",
-                                      dataSize:500});
-    var graph4 = new d3jsGraph.Graph({top:420,left:920,width:900,height:400,
-                                      lineColor:"purple",text:"Force"});
+                                      text:"Gyroscope",dataSize:5,clipSize:1,dataMaxVal:20});
+    var graph2 = new d3jsGraph.Graph({width:900,height:400,
+                                      lineColor:"blue",text:undefined,
+                                      dataSize:200,dataMaxVal:20});
+    var graph3 = new d3jsGraph.Graph({width:900,height:400,
+                                      lineColor:"green",text:undefined,
+                                      dataSize:500,dataMaxVal:20});
+    var graph4 = new d3jsGraph.Graph({width:900,height:400,type:"bar",
+                                      dataMaxVal:20, dataSize:5});
     
      setInterval(function(){
          graph1.pushData(Math.floor(Math.random()*(20-1+1)+1));
          graph2.pushData(Math.floor(Math.random()*(20-1+1)+1));
          graph3.pushData(Math.floor(Math.random()*(20-1+1)+1));
-         graph4.pushData(Math.floor(Math.random()*(20-1+1)+1));
+         //graph4.pushData(Math.floor(Math.random()*(20-1+1)+1));
          },100);
     </script>
 </body>
