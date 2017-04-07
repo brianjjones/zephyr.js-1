@@ -38,6 +38,8 @@
 #include "zjs_ipm.h"
 #endif
 
+//BJONES LOOK INTO USING THIS
+#define DELAY_CYCLES(n) ( ((n)&gt;0) ? __builtin_avr_delay_cycles( n ) : __builtin_avr_delay_cycles( 0 ) ) // Make sure we never have a delay less than zero
 #define ZJS_MAX_PRINT_SIZE      512
 
 #ifdef ZJS_SNAPSHOT_BUILD
