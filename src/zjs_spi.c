@@ -32,13 +32,27 @@ enum spi_topology {
 };
 
 typedef struct spi_handle {
-    struct device *spi_device;
+    struct spi_config spi_config;
+    struct spi_cs_control spi_cs;
     enum spi_topology topology;
     bool closed;
 } spi_handle_t;
 
 static jerry_value_t zjs_spi_prototype;
+/*
+struct spi_config spi_config;// = {
+    //.frequency = 128000,
+   // .operation = SPI_OP_MODE_MASTER | SPI_MODE_CPOL |
+   // SPI_MODE_CPHA | SPI_WORD_SET(8) | SPI_LINES_SINGLE,
+   // .slave = 1
+    //.cs = SPI_CS,
+};
 
+struct spi_cs_control spi_cs = {
+    .gpio_pin = 0,
+    .delay = 0
+};
+*/
 static void zjs_spi_callback_free(void *native)
 {
     // requires: handle is the native pointer we registered with
@@ -53,6 +67,20 @@ static const jerry_object_native_info_t spi_type_info = {
    .free_cb = zjs_spi_callback_free
 };
 
+static void get_gpio_dev(u32_t pin_val) {    
+    char devname[20];
+    int pin;
+    int rval = zjs_board_find_pin(pin_val, devname, &pin);
+
+    if (rval == FIND_PIN_INVALID) {
+        return TYPE_ERROR("bad pin argument");
+    }
+    spi_cs.gpio_dev = device_get_binding(devname);
+    if (!spi_cs.pio_dev || rval == FIND_PIN_FAILURE) {
+        return zjs_error("SPI unable to find CS pin");
+    }        
+}
+
 static ZJS_DECL_FUNC(zjs_spi_transceive)
 {
     // requires: Writes and reads from the SPI bus, takes one to three arguments
@@ -63,7 +91,7 @@ static ZJS_DECL_FUNC(zjs_spi_transceive)
     //           returns the buffer received on the SPI in reply.  Otherwise
     //           returns NULL.
 
-    ZJS_VALIDATE_ARGS(Z_NUMBER, Z_OPTIONAL Z_ARRAY Z_STRING Z_BUFFER,
+    ZJS_VALIDATE_ARGS(Z_OPTIONAL Z_ARRAY Z_STRING Z_BUFFER,
                       Z_OPTIONAL Z_STRING);
 
     ZJS_GET_HANDLE(this, spi_handle_t, handle, spi_type_info);
@@ -79,14 +107,14 @@ static ZJS_DECL_FUNC(zjs_spi_transceive)
     zjs_buffer_t *rx_buf = NULL;
     jerry_value_t rx_buf_obj = jerry_create_null();
     jerry_value_t tx_buf_obj;
-    u32_t slave_num = (u32_t)jerry_get_number_value(argv[0]);
+    // BJONES u32_t slave_num = (u32_t)jerry_get_number_value(argv[0]);
     // Valid numbers are 0 thru 127
-    if (slave_num > 127 || spi_slave_select(handle->spi_device, slave_num)) {
-        return zjs_error("SPI slave select failed\n");
-    }
+    //if (slave_num > 127) {
+      //  return zjs_error("SPI slave invalid\n");
+   // }
 
     // If only a slave is given, this must be a single read or its invalid
-    if (argc == 1) {
+    if (argc == 0) {
         if (handle->topology != ZJS_TOPOLOGY_READ) {
             return ZJS_STD_ERROR(RangeError, "Missing transmit buffer");
         }
@@ -166,7 +194,7 @@ static ZJS_DECL_FUNC(zjs_spi_transceive)
         if (dir_arg == ZJS_TOPOLOGY_FULL_DUPLEX) {
             rx_buf_obj = zjs_buffer_create(tx_buf->bufsize, &rx_buf);
             // Send the data and read from the device
-            if (spi_transceive(handle->spi_device, tx_buf->buffer,
+            if (spi_transceive(handle->spi_config, tx_buf->buffer,
                                tx_buf->bufsize, rx_buf->buffer,
                                rx_buf->bufsize) != 0) {
                 jerry_release_value(rx_buf_obj);
@@ -175,7 +203,7 @@ static ZJS_DECL_FUNC(zjs_spi_transceive)
         }
         // This is a write only operation, return a NULL buffer
         else {
-            if (spi_write(handle->spi_device, tx_buf->buffer,
+            if (spi_write(handle->spi_config, tx_buf->buffer,
                           tx_buf->bufsize) != 0) {
                 return ZJS_STD_ERROR(SystemError, "SPI transceive failed");
             }
@@ -185,7 +213,7 @@ static ZJS_DECL_FUNC(zjs_spi_transceive)
     else {
         rx_buf_obj = zjs_buffer_create(MAX_READ_BUFF, &rx_buf);
         // Read the data from the device
-        if (spi_read(handle->spi_device,
+        if (spi_read(handle->spi_config,
                      rx_buf->buffer, rx_buf->bufsize) != 0) {
             jerry_release_value(rx_buf_obj);
             return ZJS_STD_ERROR(SystemError, "SPI transceive failed");
@@ -214,8 +242,12 @@ static ZJS_DECL_FUNC(zjs_spi_open)
     ZJS_VALIDATE_ARGS(Z_OPTIONAL Z_OBJECT);
 
     // Default values
+
+
     u32_t bus = 0;
-    double speed = 10;
+    u32_t slave = 1;
+    u32_t cs = 0;
+    double speed = 128000;
     bool msbFirst = true;
     u32_t bits = 8;
     u32_t polarity = 0;
@@ -224,7 +256,7 @@ static ZJS_DECL_FUNC(zjs_spi_open)
     char bus_str[9];
     enum spi_topology topology = ZJS_TOPOLOGY_FULL_DUPLEX;
     u32_t frame_gap = 0;
-    struct spi_config config = { 0 };
+    //struct spi_config config = { 0 };
 
     // Get any provided optional args
     if (argc >= 1) {
@@ -255,6 +287,9 @@ static ZJS_DECL_FUNC(zjs_spi_open)
         if (phase != 0 && phase != 2)
             return ZJS_STD_ERROR(TypeError, "Invalid phase");
 
+        zjs_obj_get_uint32(argv[0], "slave", &slave);
+        zjs_obj_get_uint32(argv[0], "cs", &cs);
+        
         // Connection type
         zjs_obj_get_string(argv[0], "topology", topology_str, 13);
         if (strncmp(topology_str, "full-duplex", 12) == 0)
@@ -273,40 +308,44 @@ static ZJS_DECL_FUNC(zjs_spi_open)
         zjs_obj_get_uint32(argv[0], "frame_gap", &frame_gap);
     }
 
-    config.config |= SPI_WORD(bits);
+    handle->spi_config->operation |= SPI_WORD_SET(bits);
 
     if (msbFirst)
-        config.config |= SPI_TRANSFER_MSB;
+        handle->spi_config->operation |= SPI_TRANSFER_MSB;
     else
-        config.config |= SPI_TRANSFER_LSB;
+        handle->spi_config->operation |= SPI_TRANSFER_LSB;
 
     if (speed > 0)
-        config.max_sys_freq = speed;
+        handle->spi_config->frequency = speed;
 
     // Note: The mode is determined by adding the polarity and phase bits
     // together, this is why polarity is either 0 or 2
     if (polarity == 2)
-        config.config |= SPI_MODE_CPOL;
+        handle->spi_config->operation |= SPI_MODE_CPOL;
 
     if (phase == 1)
-        config.config |= SPI_MODE_CPHA;
+        handle->spi_config->operation |= SPI_MODE_CPHA;
 
-    struct device *spi_device = device_get_binding(bus_str);
+    handle->spi_config->slave = slave;
 
-    if (!spi_device) {
+    handle->spi_config->dev = device_get_binding(bus_str);    
+    
+    if (!handle->spi_config.dev) {
         return zjs_error("Could not find SPI driver\n");
     }
 
-    if (spi_configure(spi_device, &config)) {
+    // Get the GPIO CS pin if provided
+    get_gpio_dev(cs);
+    
+   /* if (spi_configure(spi_device, &spi_config)) {
         return zjs_error("SPI configuration failed\n");
-    }
+    }*/
 
     // Create the SPI object
     jerry_value_t spi_obj = jerry_create_object();
     jerry_set_prototype(spi_obj, zjs_spi_prototype);
 
-    spi_handle_t *handle = zjs_malloc(sizeof(spi_handle_t));
-    handle->spi_device = spi_device;
+    spi_handle_t *handle = zjs_malloc(sizeof(spi_handle_t));    
     handle->closed = false;
     handle->topology = topology;
     jerry_set_object_native_pointer(spi_obj, handle, &spi_type_info);

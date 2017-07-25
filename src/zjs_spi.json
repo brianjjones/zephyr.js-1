@@ -5,6 +5,7 @@
     "zephyr_conf": {
         "all": [
             "CONFIG_SPI=y",
+            "CONFIG_SPI_LEGACY_API=n",
             "CONFIG_SPI_0=y",
             "CONFIG_SPI_0_NAME=\"SPI_0\"",
             "CONFIG_SPI_0_IRQ_PRI=2",
