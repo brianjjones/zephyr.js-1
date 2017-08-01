@@ -248,7 +248,7 @@ static ZJS_DECL_FUNC(zjs_spi_open)
 
     // Default values
     u32_t bus = 0;
-    double speed = 10;
+    double speed = 2;
     bool msbFirst = true;
     u32_t bits = 8;
     u32_t polarity = 0;
