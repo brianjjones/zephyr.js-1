@@ -61,7 +61,6 @@ var MAGENTA = [0xF8,0x1F];
 var YELLOW =  [0xFF,0xE0];
 var WHITE =  [0xFF,0xFF];
 
-var ystart = xstart = colstart  = rowstart = 0;
 var gpio = require('gpio');
 var spi = require("spi");
 var spiBus = spi.open({bus:1, polarity:0, phase:0, bits:8});
