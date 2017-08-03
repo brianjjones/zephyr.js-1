@@ -66,19 +66,13 @@ static ZJS_DECL_FUNC(zjs_spi_transceive)
     ZJS_VALIDATE_ARGS(Z_NUMBER, Z_OPTIONAL Z_ARRAY Z_STRING Z_BUFFER,
                       Z_OPTIONAL Z_STRING);
 
-    //zjs_print_mem_stats();
     ZJS_GET_HANDLE(this, spi_handle_t, handle, spi_type_info);
-
-    //BJONES TEST
-    //int arr[100] = { [0 ... 99] = 66 };
-    //ZJS_PRINT("BJONES checking array %i\n", arr[40]);
-
 
     if (handle->closed == true) {
         ZJS_PRINT("SPI bus is closed\n");
         return jerry_create_null();
     }
-    //ZJS_PRINT("BJONES %s : %i\n", __func__, __LINE__);
+
     size_t len;
     jerry_value_t buffer;
     zjs_buffer_t *tx_buf = NULL;
@@ -86,17 +80,21 @@ static ZJS_DECL_FUNC(zjs_spi_transceive)
     jerry_value_t rx_buf_obj = jerry_create_null();
     jerry_value_t tx_buf_obj;
 
-  //  if (spi_slave_select(handle->spi_device, jerry_get_number_value(argv[0]))) {
-  //      return zjs_error("SPI slave select failed\n");
-  //  }
     // If only a slave is given, this must be a single read or its invalid
+
     if (argc == 1) {
         if (handle->topology != ZJS_TOPOLOGY_READ) {
             return ZJS_STD_ERROR(RangeError, "Missing transmit buffer");
         }
     }
 
-    //ZJS_PRINT("BJONES %s : %i\n", __func__, __LINE__);
+    // If a buffer is provided, check that it is a valid type
+    if (argc > 1 && (!jerry_value_is_array(argv[1]) &&
+                      !jerry_value_is_string(argv[1]) &&
+                      !zjs_value_is_buffer(argv[1]))) {
+        return SYNTAX_ERROR("SPI transceive buffer is an invalid type");
+    }
+
     jerry_size_t dir_len = 13;
     char dir_str[dir_len];
     // Set the direction default based on the topology.
@@ -104,7 +102,6 @@ static ZJS_DECL_FUNC(zjs_spi_transceive)
 
     // If we have a 'direction' arg, get it and validate
     if (argc >= 3) {
-        //ZJS_PRINT("BJONES %s : %i\n", __func__, __LINE__);
         zjs_copy_jstring(argv[2], dir_str, &dir_len);
 
         if (strncmp(dir_str, "read-write", 11) == 0)
@@ -135,7 +132,6 @@ static ZJS_DECL_FUNC(zjs_spi_transceive)
             return ZJS_STD_ERROR(NotSupportedError, "Write buffer is NULL");
         }
     }
-    //ZJS_PRINT("BJONES %s : %i\n", __func__, __LINE__);
     // If we need to write a buffer
     if (dir_arg != ZJS_TOPOLOGY_READ) {
         buffer = argv[1];
@@ -149,8 +145,7 @@ static ZJS_DECL_FUNC(zjs_spi_transceive)
                     if (jerry_value_is_number(item)) {
                         tx_buf->buffer[i] = (u8_t)jerry_get_number_value(item);
                     } else {
-                        ERR_PRINT(
-                            "non-numeric value in array, treating as 0\n");
+                        ERR_PRINT("non-numeric value in array, treating as 0\n");
                         tx_buf->buffer[i] = 0;
                     }
                 }
@@ -172,37 +167,27 @@ static ZJS_DECL_FUNC(zjs_spi_transceive)
         if (dir_arg == ZJS_TOPOLOGY_FULL_DUPLEX) {
             rx_buf_obj = zjs_buffer_create(tx_buf->bufsize, &rx_buf);
             // Send the data and read from the device
-            //ZJS_PRINT("BJONES %s : %i\n", __func__, __LINE__);
             if (spi_transceive(handle->spi_device, tx_buf->buffer,
                                tx_buf->bufsize, rx_buf->buffer,
                                rx_buf->bufsize) != 0) {
-                //ZJS_PRINT("BJONES %s : %i\n", __func__, __LINE__);
                 jerry_release_value(rx_buf_obj);
                 jerry_release_value(tx_buf_obj);
                 return ZJS_STD_ERROR(SystemError, "SPI transceive failed");
             }
             jerry_release_value(tx_buf_obj);
-            //ZJS_PRINT("BJONES %s : %i\n", __func__, __LINE__);
         }
         // This is a write only operation, return a NULL buffer
         else {
-          /*  ZJS_PRINT("BJONES %s : %i\n", __func__, __LINE__);
-            for (int i = 0; i < tx_buf->bufsize; i++)
-                ZJS_PRINT("%i:",tx_buf->buffer[i]);
-            
-            ZJS_PRINT("\n");*/
             if (spi_write(handle->spi_device, tx_buf->buffer,
                           tx_buf->bufsize) != 0) {
                 jerry_release_value(tx_buf_obj);
                 return ZJS_STD_ERROR(SystemError, "SPI transceive failed");
             }
-            //ZJS_PRINT("BJONES %s : %i\n", __func__, __LINE__);
             jerry_release_value(tx_buf_obj);
             rx_buf_obj = jerry_create_null();
         }
     }  // This is a read only operation
     else {
-        //ZJS_PRINT("BJONES %s : %i\n", __func__, __LINE__);
         rx_buf_obj = zjs_buffer_create(MAX_READ_BUFF, &rx_buf);
         // Read the data from the device
         if (spi_read(handle->spi_device,
@@ -210,8 +195,7 @@ static ZJS_DECL_FUNC(zjs_spi_transceive)
             jerry_release_value(rx_buf_obj);
             return ZJS_STD_ERROR(SystemError, "SPI transceive failed");
         }
-        //ZJS_PRINT("BJONES %s : %i\n", __func__, __LINE__);
-    }    
+    }
     return rx_buf_obj;
 }
 
@@ -222,18 +206,6 @@ static ZJS_DECL_FUNC(zjs_spi_close)
 
     ZJS_GET_HANDLE(this, spi_handle_t, handle, spi_type_info);
     handle->closed = true;
-    return jerry_create_boolean(true);
-}
-
-
-static ZJS_DECL_FUNC(zjs_wait)
-{
-    u32_t ms = (u32_t)jerry_get_number_value(argv[0]);
-    //ZJS_PRINT("Sleeping for %i ms\n", ms);
-   // if (ms > 100)
-     //   ms -= 100;
-    k_sleep(ms);
-    //ZJS_PRINT("Done sleeping\n");
     return jerry_create_boolean(true);
 }
 
