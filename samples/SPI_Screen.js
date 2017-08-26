@@ -25,13 +25,14 @@ console.log("SPI screen test starting..");
 try {
     LCD.initScreen();
     LCD.fillRect(0, 0, LCD.width, LCD.height, BLACK);
-    LCD.drawLine(30, 70, 40, 100, YELLOW);
-    LCD.drawLine(70, 30, 100, 50, CYAN);
-    LCD.fillRect(50, 50, 100, 100, RED);
-    LCD.drawPixel(64, 80, GREEN);
-    LCD.drawPixel(42, 53, CYAN);
-    LCD.drawPixel(32, 40, MAGENTA);
-    stopJS();
+    LCD.drawCircle(100, 100, 50, RED);
+    //LCD.drawLine(30, 70, 40, 100, YELLOW);
+    //LCD.drawLine(70, 30, 100, 50, CYAN);
+    //LCD.fillRect(50, 50, 100, 100, RED);
+    //LCD.drawPixel(64, 80, GREEN);
+    //LCD.drawPixel(42, 53, CYAN);
+    //LCD.drawPixel(32, 40, MAGENTA);
+    //stopJS();
 } catch (err) {
   console.log("SPI error: " + err.message);
 }

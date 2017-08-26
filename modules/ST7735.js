@@ -100,6 +100,39 @@ function ST7735() {
             this.writeData(buf);
     }
 
+    st7735API.drawCircle = function(x0, y0, radius, color) {
+        var f = 1 - radius;
+        var ddF_x = 1;
+        var ddF_y = -2 * radius;
+        var x = 0;
+        var y = radius;
+
+        this.drawPixel(x0  , y0+radius, color);
+        this.drawPixel(x0  , y0-radius, color);
+        this.drawPixel(x0+radius, y0  , color);
+        this.drawPixel(x0-radius, y0  , color);
+
+        while (x<y) {
+            if (f >= 0) {
+                y--;
+                ddF_y += 2;
+                f += ddF_y;
+            }
+            x++;
+            ddF_x += 2;
+            f += ddF_x;
+
+            this.drawPixel(x0 + x, y0 + y, color);
+            this.drawPixel(x0 - x, y0 + y, color);
+            this.drawPixel(x0 + x, y0 - y, color);
+            this.drawPixel(x0 - x, y0 - y, color);
+            this.drawPixel(x0 + y, y0 + x, color);
+            this.drawPixel(x0 - y, y0 + x, color);
+            this.drawPixel(x0 + y, y0 - x, color);
+            this.drawPixel(x0 - y, y0 - x, color);
+        }
+    }
+
     st7735API.drawPixel = function(x, y, color) {
         // Check for invalid pixel location
         if((x < 0) || (x >= this.width) || (y < 0) || (y >= this.height)) {
