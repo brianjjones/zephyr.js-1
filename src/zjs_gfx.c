@@ -16,6 +16,9 @@
 u16_t maxPixels = 128 * 160 * 3;
 
 typedef struct gfx_handle {
+    u16_t screenW;
+    u16_t screenH;
+    u8_t *pixels[][];
     jerry_value_t screenInitCB;
     jerry_value_t drawDataCB;
     jerry_value_t jsThis;
@@ -77,7 +80,41 @@ static void args_to_data(gfx_data_t *data, u32_t argc, const jerry_value_t argv[
         }
     }
 }
+/*
+// Fills a buffer with the pixels to draw a solid rectangle and calls the provided JS callback to draw it on the screen
+static jerry_value_t zjs_gfx_fill_buffer (u32_t x, u32_t y, u32_t w, u32_t h, u8_t color[], gfx_handle_t *gfxHandle)
+{
+    u32_t pixels = w * h * COLORBYTES; // Each pixel has several bytes of data
+    u8_t passes = 1;    // Number of times the data buffer needs to be sent
 
+    if (pixels > maxPixels) {
+        pixels = maxPixels;
+        passes = (pixels + (maxPixels -1)) / maxPixels;
+    }
+
+    zjs_buffer_t *recBuf = NULL;
+    ZVAL recBufObj =  zjs_buffer_create(pixels, &recBuf);
+
+    for (int i = 0; i < pixels; i++) {
+        if (i % 2)
+            recBuf->buffer[i] = color[1];
+        else
+            recBuf->buffer[i] = color[0];
+    }
+
+    jerry_value_t args[] = {jerry_create_number(x), jerry_create_number(y),
+                            jerry_create_number(w), jerry_create_number(h), recBufObj};
+
+    // Send the buffer as many times as needed to fill the rectangle
+    for ( int i = 0; i < passes ; i++) {
+        jerry_value_t ret = jerry_call_function(gfxHandle->drawDataCB, gfxHandle->jsThis, args, 5);
+        if (jerry_value_has_error_flag (ret)) {
+            return ret;
+        }
+    }
+    return ZJS_UNDEFINED;
+}
+*/
 // Fills a buffer with the pixels to draw a solid rectangle and calls the provided JS callback to draw it on the screen
 static jerry_value_t zjs_gfx_fill_rect_priv (u32_t x, u32_t y, u32_t w, u32_t h, u8_t color[], gfx_handle_t *gfxHandle)
 {
@@ -117,17 +154,41 @@ static jerry_value_t zjs_gfx_draw_char_priv(u32_t x, u32_t y, char c, u8_t color
 {
     u32_t asciiIndex = (u8_t)c - 33;    // To save size our font doesn't include the first 33 chars
     u8_t fontBytes = font_data_descriptors[asciiIndex][0] * 2;  // 2 bytes per pixel
+    u16_t bufferBytes = fontBytes * size * 2;
+    u8_t w = font_data_descriptors[asciiIndex][0] * size;
+    u8_t h = 16 * size;
     u16_t index = font_data_descriptors[asciiIndex][1];
     jerry_value_t ret = ZJS_UNDEFINED;
     zjs_buffer_t *charBuf = NULL;
+    zjs_buffer_t *pixBuf = NULL;
     ZVAL charBufObj =  zjs_buffer_create(fontBytes, &charBuf);
-
+    ZVAL pixelBufObj = zjs_buffer_create(bufferBytes, &pixBuf);
     if (charBuf) {
         for (int i = 0; i < fontBytes; i++) {
             charBuf->buffer[i] = font_data[index + i];
         }
     }
 
+    for (int i = 0; i < fontBytes; i++) {
+        u16_t line = (((u16_t)charBuf->buffer[i]) << 8) | charBuf->buffer[i+1];
+        for (int j = 0; j < bufferBytes; j+=(size * 2)) {
+            if((line >> j)  & 1) {
+                for (int k = 0; k < (size * 2); k+=2) {
+                    pixBuf->buffer[j + k] = color[0];
+                    pixBuf->buffer[j + k + 1] = color[1];
+                }
+            }
+        }
+    }
+
+    jerry_value_t args[] = {jerry_create_number(x), jerry_create_number(y),
+                            jerry_create_number(w), jerry_create_number(h), pixelBufObj};
+
+    ret = jerry_call_function(gfxHandle->drawDataCB, gfxHandle->jsThis, args, 5);
+    if (jerry_value_has_error_flag (ret)) {
+        return ret;
+    }
+/*
     for(int i = 0; i < fontBytes; i+=2) {
         u16_t line = (((u16_t)charBuf->buffer[i]) << 8) | charBuf->buffer[i+1];
         for(int j = 0; j < 16; j++) {
@@ -142,7 +203,8 @@ static jerry_value_t zjs_gfx_draw_char_priv(u32_t x, u32_t y, char c, u8_t color
                 }
             }
         }
-    }
+    } */
+
     return ZJS_UNDEFINED;
 }
 
@@ -379,9 +441,12 @@ static ZJS_DECL_FUNC(zjs_gfx_set_cb)
         return ZJS_ERROR("could not allocate handle\n");
     }
 
+    handle->screenW = jerry_acquire_value(argv[0]);
+    handle->screenH = jerry_acquire_value(argv[1]);
     handle->screenInitCB = jerry_acquire_value(argv[2]);
     handle->drawDataCB = jerry_acquire_value(argv[3]);
     handle->jsThis = jerry_acquire_value(argv[4]);
+    handle->pixels =
 
     jerry_value_t gfx_obj = zjs_create_object();
     jerry_set_prototype(gfx_obj, zjs_gfx_prototype);
