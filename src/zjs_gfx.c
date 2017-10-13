@@ -19,6 +19,7 @@ typedef struct gfx_handle {
     u16_t screenW;
     u16_t screenH;
     u8_t *pixels[][];
+    u16_t
     jerry_value_t screenInitCB;
     jerry_value_t drawDataCB;
     jerry_value_t jsThis;
@@ -168,7 +169,22 @@ static jerry_value_t zjs_gfx_draw_char_priv(u32_t x, u32_t y, char c, u8_t color
             charBuf->buffer[i] = font_data[index + i];
         }
     }
+/* BJONES
+    2D / 1D - mapping is pretty simple. Given x and y, and 2D array sizes width and height, you can calculate the according index i in 1D space (zero-based) by
 
+    i = x + width*y;
+    and the reverse operation is
+
+    x = i % width;    // % is the "modulo operator", the remainder of i / width;
+    y = i / width;    // where "/" is an integer division
+
+    so set xStart xEnd
+    if ((i%width >= xStart && i%width < xEnd) && (i/width > yStart && i/width < yEnd)) {
+        buffer[curr] = pixels[i][0];
+        buffer[curr+1] = pixels[i][1];
+    }
+}
+*/
     for (int i = 0; i < fontBytes; i++) {
         u16_t line = (((u16_t)charBuf->buffer[i]) << 8) | charBuf->buffer[i+1];
         for (int j = 0; j < bufferBytes; j+=(size * 2)) {
