@@ -23,6 +23,7 @@ var gfxLib = require("gfx");
 console.log("SPI screen test starting..");
 
 try {
+    console.log("w / h = " + LCD.width + ' / ' + LCD.height);
     var GFX = gfxLib.init(LCD.width, LCD.height, LCD.initScreen, LCD.drawCB, LCD);
     GFX.fillRect(0, 0, LCD.width, LCD.height, BLACK);
     GFX.drawVLine(123, 0, 160, RED, 5);
