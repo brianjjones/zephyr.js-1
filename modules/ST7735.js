@@ -67,6 +67,8 @@ function ST7735() {
         this.setAddrWindow(x, y, x + w - 1, y + h - 1);
         this.dcPin.write(1);    // Set DC pin low to indicate data
         this.csPin.write(0);
+        console.log("GOT DATA");
+        console.log("Buffer contents:", data.toString('hex'));
         this.spiBus.transceive(1, data, "write");
         this.csPin.write(1);
     }
