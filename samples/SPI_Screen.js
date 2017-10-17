@@ -37,9 +37,10 @@ try {
     GFX.drawString(0, 35, "WORLD", [0x06, 0x1F], 1);
     GFX.drawChar(20, 60,'Z', YELLOW, 2);
     GFX.drawChar(40, 70,'J', YELLOW, 2);
-    GFX.drawChar(60, 80,'S', YELLOW, 2);*/
+    GFX.drawChar(60, 80,'S', YELLOW, 2);
     //GFX.drawChar(60, 80,'S', BLACK, 1);
-    GFX.fillRect(2, 2, 4, 4, RED);
+    GFX.fillRect(2, 2, 4, 4, RED);*/
+    GFX.drawChar(20, 60,'Z', YELLOW, 2);
 } catch (err) {
   console.log("SPI error: " + err.message);
 }
