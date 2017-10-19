@@ -17,24 +17,21 @@ var MAGENTA = [0xF8, 0x1F];
 var YELLOW =  [0xFF, 0xE0];
 var WHITE =  [0xFF, 0xFF];
 
+// Load the screen, gpio, and GFX modules
 var LCD = require("ST7735.js");
 var gpio = require('gpio');
 var gfxLib = require("gfx");
+
 console.log("SPI screen test starting..");
 
-// BJONES TODO should I make a flush call? i.e. you could add everything you wanted then flush?
-// BJONES TODO add a function to set the buffer size for drawing. Otherwise use default maxPixels
 // BJONES TODO add a function to set the COLORBYTES
 
 try {
-    console.log("w / h = " + LCD.width + ' / ' + LCD.height);
+    // Initialize the screen
     var GFX = gfxLib.init(LCD.width, LCD.height, LCD.initScreen, LCD.drawCB, LCD);
-    //GFX.fillRect(0, 0, 4, 4, RED);
+
     GFX.fillRect(0, 0, LCD.width, LCD.height, BLACK);
-    //BJONES GFX.fillRect(0, 0, LCD.width, 4, YELLOW);
-    //GFX.fillRect(0, 30, LCD.width, 5, WHITE);
-    //GFX.drawHLine(0, 60, 120, GREEN, 5);
-    //BJONES GFX.fillRect(0,LCD.height - 4,LCD.width, LCD.height, RED);
+
     GFX.drawVLine(123, 0, 160, RED, 5);
     GFX.drawVLine(118, 0, 160, YELLOW, 3);
     GFX.drawVLine(113, 0, 160, WHITE);
@@ -42,17 +39,17 @@ try {
     GFX.drawLine(0, 10, 115, 160, BLUE, 10);
     GFX.drawLine(0, 0, 128, 160, RED);
     GFX.flush();
+
     GFX.drawString(0, 20, "Hello", RED, 1);
     GFX.flush();
+
     GFX.drawString(0, 35, "WORLD", [0x06, 0x1F], 2);
     GFX.flush();
-    /*GFX.drawChar(20, 60,'Z', YELLOW, 3);
-    GFX.drawChar(40, 70,'J', YELLOW, 3);
-    GFX.drawChar(60, 80,'S', YELLOW, 3); */
+
     GFX.drawChar(20, 60,'Z', YELLOW, 3);
     GFX.drawChar(40, 70,'J', YELLOW, 3);
     GFX.drawChar(60, 80,'S', YELLOW, 3)
     GFX.flush();
 } catch (err) {
-  console.log("SPI error: " + err.message);
+  console.log("Screen error: " + err.message);
 }
