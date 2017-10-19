@@ -14,7 +14,6 @@
 #define COLORBYTES 2    // Number of bytes needed to represent the color
 
 u16_t maxPixels = 800;
-//const static u8_t pixelTest[200] = {50};
 
 typedef struct gfx_handle {
     u16_t screenW;
