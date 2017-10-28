@@ -40,10 +40,10 @@ try {
     GFX.drawLine(0, 0, 128, 160, RED);
     GFX.flush();
 
-    GFX.drawString(0, 20, "Hello", RED, 1);
+    GFX.drawString(0, 20, "Hello", RED, 2);
     GFX.flush();
 
-    GFX.drawString(0, 35, "WORLD", [0x06, 0x1F], 2);
+    GFX.drawString(0, 35, "WORLD", [0x06, 0x1F], 3);
     GFX.flush();
 
     GFX.drawChar(20, 60,'Z', YELLOW, 3);
