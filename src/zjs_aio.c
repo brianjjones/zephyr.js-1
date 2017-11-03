@@ -329,6 +329,7 @@ jerry_value_t zjs_aio_init()
     zjs_obj_add_function(aio_obj, "open", zjs_aio_open);
     // Set up cleanup function for when the object gets freed
     jerry_set_object_native_pointer(aio_obj, NULL, &aio_module_type_info);
+    zjs_unregister_service_routine(aio_poll_routine);
     return aio_obj;
 }
 

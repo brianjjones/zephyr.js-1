@@ -236,21 +236,14 @@ void zjs_register_service_routine(void *handle, zjs_service_routine func)
 
 void zjs_unregister_service_routine(zjs_service_routine func) {
     for (int i = 0; i < num_routines; i++) {
-        //svc_routine_map[i].handle = NULL;
-        // BJONES DOESN'T WORK yet
-        // Try and set the pointers to null? then free the struct?
-        // Also, sensor doesn't use this so can't be the problem there.
-        // Ask Jimmy if there is anything similar in sensor, it might be  my culprit
-        // Also also.... change this to be where the module unregister's itself
-        // rather than doing it brute force.
         if (svc_routine_map[i].func == func) {
-            ZJS_PRINT("BJONES freeing function\n");
-            zjs_free(&svc_routine_map[i]);
-            break;
+            svc_routine_map[i].handle = NULL;
+            zjs_free(&svc_routine_map[i].func);
+            num_routines--;
+            return;
         }
     }
-    ZJS_PRINT("BJONES done with zjs_unregister_service_routine\n");
-    num_routines = 0;
+    ERR_PRINT("Couldn't unregister routine for %p\n", func);
 }
 
 s32_t zjs_service_routines(void)
