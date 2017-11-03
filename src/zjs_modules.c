@@ -207,7 +207,6 @@ void zjs_modules_cleanup()
 {
     // stop timers first to prevent further calls
     zjs_timers_cleanup();
-    zjs_unregister_service_routines();
     int gbl_modcount = sizeof(zjs_global_array) / sizeof(gbl_module_t);
     for (int i = 0; i < gbl_modcount; i++) {
         gbl_module_t *mod = &zjs_global_array[i];
@@ -226,7 +225,7 @@ void zjs_modules_cleanup()
 void zjs_register_service_routine(void *handle, zjs_service_routine func)
 {
     if (num_routines >= NUM_SERVICE_ROUTINES) {
-        DBG_PRINT(("not enough space, increase NUM_SERVICE_ROUTINES\n"));
+        ZJS_PRINT(("not enough space, increase NUM_SERVICE_ROUTINES\n"));
         return;
     }
     svc_routine_map[num_routines].handle = handle;
@@ -235,7 +234,7 @@ void zjs_register_service_routine(void *handle, zjs_service_routine func)
     return;
 }
 
-void zjs_unregister_service_routines() {
+void zjs_unregister_service_routine(zjs_service_routine func) {
     for (int i = 0; i < num_routines; i++) {
         //svc_routine_map[i].handle = NULL;
         // BJONES DOESN'T WORK yet
@@ -244,8 +243,13 @@ void zjs_unregister_service_routines() {
         // Ask Jimmy if there is anything similar in sensor, it might be  my culprit
         // Also also.... change this to be where the module unregister's itself
         // rather than doing it brute force.
-        zjs_free(&svc_routine_map[i]);
+        if (svc_routine_map[i].func == func) {
+            ZJS_PRINT("BJONES freeing function\n");
+            zjs_free(&svc_routine_map[i]);
+            break;
+        }
     }
+    ZJS_PRINT("BJONES done with zjs_unregister_service_routine\n");
     num_routines = 0;
 }
 
