@@ -207,7 +207,7 @@ void zjs_modules_cleanup()
 {
     // stop timers first to prevent further calls
     zjs_timers_cleanup();
-
+    zjs_unregister_service_routines();
     int gbl_modcount = sizeof(zjs_global_array) / sizeof(gbl_module_t);
     for (int i = 0; i < gbl_modcount; i++) {
         gbl_module_t *mod = &zjs_global_array[i];
@@ -233,6 +233,20 @@ void zjs_register_service_routine(void *handle, zjs_service_routine func)
     svc_routine_map[num_routines].func = func;
     num_routines++;
     return;
+}
+
+void zjs_unregister_service_routines() {
+    for (int i = 0; i < num_routines; i++) {
+        //svc_routine_map[i].handle = NULL;
+        // BJONES DOESN'T WORK yet
+        // Try and set the pointers to null? then free the struct?
+        // Also, sensor doesn't use this so can't be the problem there.
+        // Ask Jimmy if there is anything similar in sensor, it might be  my culprit
+        // Also also.... change this to be where the module unregister's itself
+        // rather than doing it brute force.
+        zjs_free(&svc_routine_map[i]);
+    }
+    num_routines = 0;
 }
 
 s32_t zjs_service_routines(void)
