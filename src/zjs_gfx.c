@@ -96,6 +96,7 @@ static void zjs_gfx_reset_touched_pixels(gfx_handle_t *gfxHandle)
 
 static void zjs_gfx_touch_pixels(u32_t x, u32_t y, u32_t w, u32_t h, u8_t color[], gfx_handle_t *gfxHandle)
 {   // Check that x and y aren't past the screen
+    ZJS_PRINT("bjones touching pixels %u, %u, %u, %u\n",x,y,w,h);
     if (x > gfxHandle->screenW || y > gfxHandle->screenH)
         return;
 
@@ -271,6 +272,7 @@ static ZJS_DECL_FUNC(zjs_gfx_fill_rect)
     ZJS_GET_HANDLE(this, gfx_handle_t, handle, gfx_type_info);
     gfx_data_t argData;
     args_to_data(&argData, argc, argv);
+    ZJS_PRINT("bjones in fill rect\n");
     zjs_gfx_touch_pixels(argData.coords[0], argData.coords[1], argData.coords[2], argData.coords[3], argData.color, handle);
     return ZJS_UNDEFINED;
 }

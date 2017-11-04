@@ -17,25 +17,41 @@ var MAGENTA = [0xF8, 0x1F];
 var YELLOW =  [0xFF, 0xE0];
 var WHITE =  [0xFF, 0xFF];
 
+// Load the screen, gpio, and GFX modules
 var LCD = require("ST7735.js");
 var gpio = require('gpio');
 var gfxLib = require("gfx");
+
 console.log("SPI screen test starting..");
 
 try {
-    var GFX = gfxLib.init(LCD.width, LCD.height, LCD.initScreen, LCD.drawCB, LCD);
+    // Initialize the screen
+    //BJONES its failinig in init, so figure out why on monday.
+    //var GFX = gfxLib.init(LCD.width, LCD.height, LCD.initScreen, LCD.drawCB, LCD);
+    console.log("after init");
+    //GFX.fillRect(0, 0, 100, 100, BLACK);
+    //GFX.flush();
+    /*
     GFX.fillRect(0, 0, LCD.width, LCD.height, BLACK);
+
     GFX.drawVLine(123, 0, 160, RED, 5);
     GFX.drawVLine(118, 0, 160, YELLOW, 3);
     GFX.drawVLine(113, 0, 160, WHITE);
     GFX.drawLine(0, 20, 100, 160, WHITE, 15);
     GFX.drawLine(0, 10, 115, 160, BLUE, 10);
     GFX.drawLine(0, 0, 128, 160, RED);
+    GFX.flush();
+
     GFX.drawString(0, 20, "Hello", RED, 2);
+    GFX.flush();
+
     GFX.drawString(0, 35, "WORLD", [0x06, 0x1F], 3);
-    GFX.drawChar(20, 60,'Z', YELLOW, 4);
-    GFX.drawChar(40, 70,'J', YELLOW, 4);
-    GFX.drawChar(60, 80,'S', YELLOW, 4);
+    GFX.flush();
+
+    GFX.drawChar(20, 60,'Z', YELLOW, 3);
+    GFX.drawChar(40, 70,'J', YELLOW, 3);
+    GFX.drawChar(60, 80,'S', YELLOW, 3)
+    GFX.flush();*/
 } catch (err) {
-  console.log("SPI error: " + err.message);
+  console.log("Screen error: " + err.message);
 }
