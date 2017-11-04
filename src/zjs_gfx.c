@@ -7,7 +7,6 @@
 #include "zjs_buffer.h"
 #include "zjs_callbacks.h"
 #include "zjs_error.h"
-#include "zjs_gfx.h"
 #include "zjs_util.h"
 #include "zjs_gfx_font.h"
 
