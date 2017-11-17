@@ -38,6 +38,7 @@ typedef struct gfx_data {
 } gfx_data_t;
 
 static jerry_value_t zjs_gfx_prototype;
+bool drawImmediate = true;
 
 static void zjs_gfx_callback_free(void *native)
 {
@@ -128,6 +129,51 @@ static void zjs_gfx_touch_pixels(u32_t x, u32_t y, u32_t w, u32_t h, u8_t color[
             pixelsIndex+=COLORBYTES;
         }
     }
+}
+
+// Fills a buffer with the pixels to draw a solid rectangle and calls the provided JS callback to draw it on the screen
+static jerry_value_t zjs_gfx_fill_rect_priv (u32_t x, u32_t y, u32_t w, u32_t h, u8_t color[], gfx_handle_t *gfxHandle)
+{
+    u32_t pixels = w * h * COLORBYTES; // Each pixel has several bytes of data
+    u8_t passes = 1;    // Number of times the data buffer needs to be sent
+
+    if (pixels > maxPixels) {
+        pixels = maxPixels;
+        passes = (pixels + (maxPixels -1)) / maxPixels;
+    }
+
+    zjs_buffer_t *recBuf = NULL;
+    ZVAL recBufObj =  zjs_buffer_create(pixels, &recBuf);
+
+    for (int i = 0; i < pixels; i++) {
+        if (i % 2)
+            recBuf->buffer[i] = color[1];
+        else
+            recBuf->buffer[i] = color[0];
+    }
+
+    jerry_value_t args[] = {jerry_create_number(x), jerry_create_number(y),
+                            jerry_create_number(w), jerry_create_number(h), recBufObj};
+
+    // Send the buffer as many times as needed to fill the rectangle
+    for (int i = 0; i < passes ; i++) {
+        jerry_value_t ret = jerry_call_function(gfxHandle->drawDataCB, gfxHandle->jsThis, args, 5);
+        if (jerry_value_has_error_flag (ret)) {
+            return ret;
+        }
+    }
+    return ZJS_UNDEFINED;
+}
+
+static jerry_value_t zjs_gfx_draw_pixels (u32_t x, u32_t y, u32_t w, u32_t h, u8_t color[], gfx_handle_t *gfxHandle)
+{
+    if (drawImmediate == false) {
+        zjs_gfx_touch_pixels(x, y, w, h, color, gfxHandle);
+    }
+    else {
+        zjs_gfx_fill_rect_priv(x, y, w, h, color, gfxHandle);
+    }
+    return ZJS_UNDEFINED;
 }
 
 static jerry_value_t zjs_gfx_call_cb(u32_t x, u32_t y, u32_t w, u32_t h, jerry_value_t data, gfx_handle_t *gfxHandle)
@@ -249,8 +295,8 @@ static jerry_value_t zjs_gfx_draw_char_priv(u32_t x, u32_t y, char c, u8_t color
             if((line >> j)  & 1) {
                 int recX = x + (i/2) * size;
                 int recY = y + j * size;
-                // Touch each bit
-                zjs_gfx_touch_pixels(recX, recY, size, size, color, gfxHandle);
+                // Draw each bit
+                zjs_gfx_draw_pixels(recX, recY, size, size, color, gfxHandle);
             }
         }
     }
@@ -278,7 +324,7 @@ static ZJS_DECL_FUNC(zjs_gfx_fill_rect)
     ZJS_GET_HANDLE(this, gfx_handle_t, handle, gfx_type_info);
     gfx_data_t argData;
     args_to_data(&argData, argc, argv);
-    zjs_gfx_touch_pixels(argData.coords[0], argData.coords[1], argData.coords[2], argData.coords[3], argData.color, handle);
+    zjs_gfx_draw_pixels(argData.coords[0], argData.coords[1], argData.coords[2], argData.coords[3], argData.color, handle);
     return ZJS_UNDEFINED;
 }
 
@@ -295,7 +341,7 @@ static ZJS_DECL_FUNC(zjs_gfx_draw_pixel)
     ZJS_GET_HANDLE(this, gfx_handle_t, handle, gfx_type_info);
     gfx_data_t argData;
     args_to_data(&argData, argc, argv);
-    zjs_gfx_touch_pixels(argData.coords[0], argData.coords[1], 1, 1, argData.color, handle);
+    zjs_gfx_draw_pixels(argData.coords[0], argData.coords[1], 1, 1, argData.color, handle);
     return ZJS_UNDEFINED;
 }
 
@@ -339,7 +385,7 @@ static ZJS_DECL_FUNC(zjs_gfx_draw_line)
         int step = yLen / xLen;
 
         for (u32_t x = argData.coords[0]; x <= argData.coords[2]; x++) {
-            zjs_gfx_touch_pixels(x, pos, argData.size, step, argData.color, handle);
+            zjs_gfx_draw_pixels(x, pos, argData.size, step, argData.color, handle);
             pos = neg == false ? pos + step : pos - step;
         }
     }
@@ -361,7 +407,7 @@ static ZJS_DECL_FUNC(zjs_gfx_draw_line)
         int step = xLen / yLen;
 
         for (u32_t y = argData.coords[1]; y <= argData.coords[3]; y++) {
-            zjs_gfx_touch_pixels(pos, y, step, argData.size, argData.color, handle);
+            zjs_gfx_draw_pixels(pos, y, step, argData.size, argData.color, handle);
             pos = neg == false ? pos + step : pos - step;
         }
     }
@@ -383,7 +429,7 @@ static ZJS_DECL_FUNC(zjs_gfx_draw_v_line)
     ZJS_GET_HANDLE(this, gfx_handle_t, handle, gfx_type_info);
     gfx_data_t argData;
     args_to_data(&argData, argc, argv);
-    zjs_gfx_touch_pixels(argData.coords[0], argData.coords[1], argData.size, argData.coords[2], argData.color, handle);
+    zjs_gfx_draw_pixels(argData.coords[0], argData.coords[1], argData.size, argData.coords[2], argData.color, handle);
     return ZJS_UNDEFINED;
 }
 
@@ -402,7 +448,7 @@ static ZJS_DECL_FUNC(zjs_gfx_draw_h_line)
     ZJS_GET_HANDLE(this, gfx_handle_t, handle, gfx_type_info);
     gfx_data_t argData;
     args_to_data(&argData, argc, argv);
-    zjs_gfx_touch_pixels(argData.coords[0], argData.coords[1], argData.coords[2], argData.size, argData.color, handle);
+    zjs_gfx_draw_pixels(argData.coords[0], argData.coords[1], argData.coords[2], argData.size, argData.color, handle);
     return ZJS_UNDEFINED;
 }
 
@@ -422,10 +468,10 @@ static ZJS_DECL_FUNC(zjs_gfx_draw_rect)
     ZJS_GET_HANDLE(this, gfx_handle_t, handle, gfx_type_info);
     gfx_data_t argData;
     args_to_data(&argData, argc, argv);
-    zjs_gfx_touch_pixels(argData.coords[0], argData.coords[1], argData.coords[2], argData.size, argData.color, handle);
-    zjs_gfx_touch_pixels(argData.coords[0], argData.coords[1] + argData.coords[3] - argData.size, argData.coords[2], argData.size, argData.color, handle);
-    zjs_gfx_touch_pixels(argData.coords[0], argData.coords[1], argData.size, argData.coords[3], argData.color, handle);
-    zjs_gfx_touch_pixels(argData.coords[0] + argData.coords[2] - argData.size, argData.coords[1], argData.size, argData.coords[3], argData.color, handle);
+    zjs_gfx_draw_pixels(argData.coords[0], argData.coords[1], argData.coords[2], argData.size, argData.color, handle);
+    zjs_gfx_draw_pixels(argData.coords[0], argData.coords[1] + argData.coords[3] - argData.size, argData.coords[2], argData.size, argData.color, handle);
+    zjs_gfx_draw_pixels(argData.coords[0], argData.coords[1], argData.size, argData.coords[3], argData.color, handle);
+    zjs_gfx_draw_pixels(argData.coords[0] + argData.coords[2] - argData.size, argData.coords[1], argData.size, argData.coords[3], argData.color, handle);
 
     return ZJS_UNDEFINED;
 }
@@ -518,6 +564,7 @@ static ZJS_DECL_FUNC(zjs_gfx_set_cb)
     u32_t totalPixels = handle->screenW * handle->screenH * COLORBYTES;
     ZJS_PRINT("BJONS zjs_gfx_set_cb 3\n");
     handle->pixelsPtr = NULL;
+    if (!drawImmediate)  //BJONES MAKE THIS NICER
     handle->pixels = zjs_buffer_create(totalPixels, &handle->pixelsPtr);
     zjs_gfx_reset_touched_pixels(handle);
     ZJS_PRINT("BJONS zjs_gfx_set_cb 4\n");

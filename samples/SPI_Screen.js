@@ -31,7 +31,7 @@ try {
     console.log("after init");
     //GFX.fillRect(0, 0, 100, 100, BLACK);
     //GFX.flush();
-    /*
+
     GFX.fillRect(0, 0, LCD.width, LCD.height, BLACK);
 
     GFX.drawVLine(123, 0, 160, RED, 5);
@@ -40,18 +40,18 @@ try {
     GFX.drawLine(0, 20, 100, 160, WHITE, 15);
     GFX.drawLine(0, 10, 115, 160, BLUE, 10);
     GFX.drawLine(0, 0, 128, 160, RED);
-    GFX.flush();
-
+    GFX.flush();    //BJONES TODO make flush do nothing in immediate mode
+    console.log("flush1");
     GFX.drawString(0, 20, "Hello", RED, 2);
     GFX.flush();
-
+console.log("flush1");
     GFX.drawString(0, 35, "WORLD", [0x06, 0x1F], 3);
     GFX.flush();
-
+console.log("flush1");
     GFX.drawChar(20, 60,'Z', YELLOW, 3);
     GFX.drawChar(40, 70,'J', YELLOW, 3);
     GFX.drawChar(60, 80,'S', YELLOW, 3)
-    GFX.flush();*/
+    GFX.flush();
 } catch (err) {
   console.log("Screen error: " + err.message);
 }
