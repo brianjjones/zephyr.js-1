@@ -212,18 +212,19 @@ static jerry_value_t zjs_gfx_flush(gfx_handle_t *gfxHandle)
     u16_t bufferIndex = 0;
     u32_t origIndex = 0;
     u8_t passes = 1;    // Number of times the data buffer needs to be sent
+    u32_t rows = 1;     //BJONES FIGURE OUT A BETTER WAY FOR THIS
     jerry_value_t ret;
 ZJS_PRINT("BJONES flush %d\n", __LINE__);
     if (pixels > maxPixels) {
-        u32_t pixelsPerRow = tpW * COLORBYTES;
-        u32_t rows = maxPixels / pixelsPerRow;
+        u32_t pixelsPerRow = tpW * COLORBYTES;  // BYTES PER ROW
+        rows = maxPixels / pixelsPerRow;  // Maximum full rows we can have per buffer
         passes = pixels / (pixelsPerRow * rows);
         // If passes has a remainder, add a pass
         if (pixels % (pixelsPerRow * rows) != 0)
             passes++;
 
         pixels = pixelsPerRow * rows;
-        ZJS_PRINT("BJONES flush %d\n", __LINE__);
+        ZJS_PRINT("BJONES pixPerRow %d, rows %d, passes %u, pixels = %d \n", pixelsPerRow, rows, passes, pixels);
     }
     ZJS_PRINT("BJONES flush %d\n", __LINE__);
     // If there are a lot of passes, it will be faster to draw the whole buffer
@@ -271,11 +272,19 @@ ZJS_PRINT("BJONES flush %d\n", __LINE__);
                     // BJONES TODO the problem is that its not drawing full lines every time.  I should make it
                     // so that it only draws exact rectangles.  If there's ever a screen with a wider value than
                     // we can support, worry about it then. i.e. its not likely.
+                    // I KNOW NOW!!!
+                    // When the height is 8, i.e. too much, it inserts a blank line effectively at the bottom of the rect.
+                    // IT STILL DOESN'T EXPLAIN why the check if the buffer is full fails below and keeps going
+                    // Really I should move this check out of X and into after all X is done, since we only do
+                    // whole X rows.
 
+                    // TODO MONDAY - break this into two functions, one that prints the big bitmap,
+                    // and one that just makes rectangles and prints them
+                    
                     // Send the buffer once its full or we are at the end
-                    if (bufferIndex == recBuf->bufsize || (currY > tpH  && currW >= tpW)) {
-                        ZJS_PRINT("Buffer index = %u, Xindex = %u, Yindex = %u, OriginIndex = %u\n", bufferIndex, i,j,origIndex);
-                        ret = zjs_gfx_call_cb(xStart, yStart, currW, currH , recBufObj, gfxHandle);
+                    if (bufferIndex == recBuf->bufsize || currH > rows) {
+                        //ZJS_PRINT("Buffer index = %u, Xindex = %u, Yindex = %u, OriginIndex = %u\n", bufferIndex, i,j,origIndex);
+                        ret = zjs_gfx_call_cb(xStart, yStart, currW, rows , recBufObj, gfxHandle);
                         if (jerry_value_has_error_flag (ret)) {
                             zjs_gfx_reset_touched_pixels(gfxHandle);
                             return ret;
