@@ -279,8 +279,9 @@ ZJS_PRINT("BJONES flush %d\n", __LINE__);
                     // whole X rows.
 
                     // TODO MONDAY - break this into two functions, one that prints the big bitmap,
-                    // and one that just makes rectangles and prints them
-                    
+                    // and one that just makes rectangles and prints them. Try changing currH > rows to
+                    // currH == rows.
+
                     // Send the buffer once its full or we are at the end
                     if (bufferIndex == recBuf->bufsize || currH > rows) {
                         //ZJS_PRINT("Buffer index = %u, Xindex = %u, Yindex = %u, OriginIndex = %u\n", bufferIndex, i,j,origIndex);
@@ -299,6 +300,7 @@ ZJS_PRINT("BJONES flush %d\n", __LINE__);
                     }
                     currX++;
             }
+            ZJS_PRINT("BJONES buffer index vs bufSize = %i : %i\n", bufferIndex, recBuf->bufsize);
             currY++;
             currX = gfxHandle->tpX0;
         }
