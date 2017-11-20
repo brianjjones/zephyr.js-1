@@ -36,8 +36,9 @@ try {
     GFX.fillRect(0, 0, LCD.width, LCD.height, BLACK);
     //GFX.fillRect(0, 0, 30, 30, RED);
     //GFX.fillRect(30, 30, 30, 30, GREEN);
-/*
+
     GFX.drawVLine(123, 0, 160, RED, 5);
+
     GFX.drawVLine(118, 0, 160, YELLOW, 3);
     GFX.drawVLine(113, 0, 160, WHITE);
     GFX.drawLine(0, 20, 100, 160, WHITE, 15);
@@ -54,7 +55,7 @@ console.log("flush1");
     GFX.drawChar(20, 60,'Z', YELLOW, 3);
     GFX.drawChar(40, 70,'J', YELLOW, 3);
     GFX.drawChar(60, 80,'S', YELLOW, 3)
-    GFX.flush();*/
+    GFX.flush();
 } catch (err) {
   console.log("Screen error: " + err.message);
 }

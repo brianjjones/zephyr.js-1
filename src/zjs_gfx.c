@@ -39,7 +39,7 @@ typedef struct gfx_data {
 } gfx_data_t;
 
 static jerry_value_t zjs_gfx_prototype;
-bool drawImmediate = true;
+bool drawImmediate = false;
 
 // Draw function depends on whether we are in immediate draw mode or not
 void (*zjs_gfx_draw_pixels)(u32_t, u32_t, u32_t, u32_t, u8_t[], gfx_handle_t*);
@@ -204,7 +204,7 @@ static jerry_value_t zjs_gfx_call_cb(u32_t x, u32_t y, u32_t w, u32_t h, jerry_v
 
 static jerry_value_t zjs_gfx_flush(gfx_handle_t *gfxHandle)
 {
-    ZJS_PRINT("BJONES flush %d\n", __LINE__);
+
     u32_t tpW = gfxHandle->tpX1 - gfxHandle->tpX0 + 1 ;
     u32_t tpH = gfxHandle->tpY1 - gfxHandle->tpY0 + 1;
     u32_t pixels = tpW * tpH * COLORBYTES;
@@ -214,7 +214,7 @@ static jerry_value_t zjs_gfx_flush(gfx_handle_t *gfxHandle)
     u8_t passes = 1;    // Number of times the data buffer needs to be sent
     u32_t rows = 1;     //BJONES FIGURE OUT A BETTER WAY FOR THIS
     jerry_value_t ret;
-ZJS_PRINT("BJONES flush %d\n", __LINE__);
+
     if (pixels > maxPixels) {
         u32_t pixelsPerRow = tpW * COLORBYTES;  // BYTES PER ROW
         rows = maxPixels / pixelsPerRow;  // Maximum full rows we can have per buffer
@@ -224,19 +224,19 @@ ZJS_PRINT("BJONES flush %d\n", __LINE__);
             passes++;
 
         pixels = pixelsPerRow * rows;
-        ZJS_PRINT("BJONES pixPerRow %d, rows %d, passes %u, pixels = %d \n", pixelsPerRow, rows, passes, pixels);
+        //ZJS_PRINT("BJONES pixPerRow %d, rows %d, passes %u, pixels = %d \n", pixelsPerRow, rows, passes, pixels);
     }
-    ZJS_PRINT("BJONES flush %d\n", __LINE__);
+
     // If there are a lot of passes, it will be faster to draw the whole buffer
     if (passes > 5 && !drawImmediate) {
-        ZJS_PRINT("BJONES printing all now\n");
+        //ZJS_PRINT("BJONES printing all now\n");
         ret = zjs_gfx_call_cb(0, 0, gfxHandle->screenW, gfxHandle->screenH, gfxHandle->pixels, gfxHandle);
     }
     else {
-        ZJS_PRINT("BJONES flush %d\n", __LINE__);
-        ZJS_PRINT("BJONES making bufer with %u pixels\n", pixels);
+
+        //ZJS_PRINT("BJONES making bufer with %u pixels\n", pixels);
         ZVAL recBufObj =  zjs_buffer_create(pixels, &recBuf);
-        ZJS_PRINT("BJONES flush %d\n", __LINE__);
+
         u32_t xStart = gfxHandle->tpX0;
         u32_t yStart = gfxHandle->tpY0;
         u32_t currX = xStart;
@@ -245,11 +245,11 @@ ZJS_PRINT("BJONES flush %d\n", __LINE__);
         u32_t currH = 0;
         u16_t currPass = 0;
 
-        ZJS_PRINT("PASSES = %i, touch width = %u, %u:%u - %u:%u\n", passes, tpW, gfxHandle->tpX0, gfxHandle->tpY0, gfxHandle->tpX1, gfxHandle->tpY1);
+        //ZJS_PRINT("PASSES = %i, touch width = %u, %u:%u - %u:%u\n", passes, tpW, gfxHandle->tpX0, gfxHandle->tpY0, gfxHandle->tpX1, gfxHandle->tpY1);
             for (u16_t j = gfxHandle->tpY0; currPass < passes ; j++) {
                 currH++;
                 xStart = gfxHandle->tpX0;
-                for (u16_t i = gfxHandle->tpX0; i < gfxHandle->tpX1; i++) {
+                for (u16_t i = gfxHandle->tpX0; i <= gfxHandle->tpX1; i++) {
                     origIndex = (i + gfxHandle->screenW * j) * COLORBYTES;
                     // Fill the pixel
                     for (u8_t k = 0; k < COLORBYTES; k++) {
@@ -283,9 +283,9 @@ ZJS_PRINT("BJONES flush %d\n", __LINE__);
                     // currH == rows.
 
                     // Send the buffer once its full or we are at the end
-                    if (bufferIndex == recBuf->bufsize || currH > rows) {
+                    if (bufferIndex == recBuf->bufsize ) {
                         //ZJS_PRINT("Buffer index = %u, Xindex = %u, Yindex = %u, OriginIndex = %u\n", bufferIndex, i,j,origIndex);
-                        ret = zjs_gfx_call_cb(xStart, yStart, currW, rows , recBufObj, gfxHandle);
+                        ret = zjs_gfx_call_cb(xStart, yStart, currW, currH , recBufObj, gfxHandle);
                         if (jerry_value_has_error_flag (ret)) {
                             zjs_gfx_reset_touched_pixels(gfxHandle);
                             return ret;
@@ -300,7 +300,7 @@ ZJS_PRINT("BJONES flush %d\n", __LINE__);
                     }
                     currX++;
             }
-            ZJS_PRINT("BJONES buffer index vs bufSize = %i : %i\n", bufferIndex, recBuf->bufsize);
+            //ZJS_PRINT("BJONES buffer index vs bufSize = %i : %i \n", bufferIndex, recBuf->bufsize);
             currY++;
             currX = gfxHandle->tpX0;
         }
@@ -312,13 +312,10 @@ ZJS_PRINT("BJONES flush %d\n", __LINE__);
 static void zjs_gfx_fill_rect_priv (u32_t x, u32_t y, u32_t w, u32_t h, u8_t color[], gfx_handle_t *gfxHandle)
 {
     zjs_gfx_touch_pixels(x, y, w, h, color, gfxHandle);
-    ZJS_PRINT("FILL 1\n");
     for (u8_t cbyte = 0; cbyte < COLORBYTES; cbyte++) {
         gfxHandle->fillStyle[cbyte] = color[cbyte];
     }
-    ZJS_PRINT("FILL 2\n");
     zjs_gfx_flush(gfxHandle);
-    ZJS_PRINT("FILL 3\n");
     //u32_t pixels = w * h * COLORBYTES; // Each pixel has several bytes of data
 }
 
@@ -382,7 +379,7 @@ static ZJS_DECL_FUNC(zjs_gfx_fill_rect)
     ZJS_GET_HANDLE(this, gfx_handle_t, handle, gfx_type_info);
     gfx_data_t argData;
     args_to_data(&argData, argc, argv);
-    ZJS_PRINT("BJONES about to draw rectangle\n");
+    //ZJS_PRINT("BJONES about to draw rectangle\n");
     zjs_gfx_draw_pixels(argData.coords[0], argData.coords[1], argData.coords[2], argData.coords[3], argData.color, handle);
     return ZJS_UNDEFINED;
 }
@@ -603,7 +600,7 @@ static ZJS_DECL_FUNC(zjs_gfx_set_cb)
     //  effects: Initializes the GFX module
 
     ZJS_VALIDATE_ARGS(Z_NUMBER, Z_NUMBER, Z_FUNCTION, Z_FUNCTION, Z_OPTIONAL Z_OBJECT);
-    ZJS_PRINT("BJONS zjs_gfx_set_cb 1\n");
+    //ZJS_PRINT("BJONS zjs_gfx_set_cb 1\n");
     gfx_handle_t *handle = zjs_malloc(sizeof(gfx_handle_t));
 
     if (!handle) {
@@ -614,13 +611,13 @@ static ZJS_DECL_FUNC(zjs_gfx_set_cb)
     handle->screenH = jerry_get_number_value(argv[1]);
     handle->screenInitCB = jerry_acquire_value(argv[2]);
     handle->drawDataCB = jerry_acquire_value(argv[3]);
-    ZJS_PRINT("BJONS zjs_gfx_set_cb 2\n");
+    //ZJS_PRINT("BJONS zjs_gfx_set_cb 2\n");
     if (argc > 4)
         handle->jsThis = jerry_acquire_value(argv[4]);
     else
         handle->jsThis = jerry_create_undefined();
 
-    ZJS_PRINT("BJONS zjs_gfx_set_cb 3\n");
+    //ZJS_PRINT("BJONS zjs_gfx_set_cb 3\n");
 
     handle->pixelsPtr = NULL;
     zjs_gfx_reset_touched_pixels(handle);
@@ -634,14 +631,14 @@ static ZJS_DECL_FUNC(zjs_gfx_set_cb)
         zjs_gfx_draw_pixels = zjs_gfx_fill_rect_priv;
     }
 
-    ZJS_PRINT("BJONS zjs_gfx_set_cb 4\n");
+    //ZJS_PRINT("BJONS zjs_gfx_set_cb 4\n");
     jerry_value_t gfx_obj = zjs_create_object();
     jerry_set_prototype(gfx_obj, zjs_gfx_prototype);
-    ZJS_PRINT("BJONS zjs_gfx_set_cb 5\n");
+    //ZJS_PRINT("BJONS zjs_gfx_set_cb 5\n");
     jerry_set_object_native_pointer(gfx_obj, handle, &gfx_type_info);
-    ZJS_PRINT("BJONS zjs_gfx_set_cb 6\n");
+    //ZJS_PRINT("BJONS zjs_gfx_set_cb 6\n");
     jerry_call_function(handle->screenInitCB, handle->jsThis, NULL, 0);
-    ZJS_PRINT("BJONS zjs_gfx_set_cb 7\n");
+    //ZJS_PRINT("BJONS zjs_gfx_set_cb 7\n");
     return gfx_obj;
 }
 
