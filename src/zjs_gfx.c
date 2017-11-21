@@ -223,8 +223,10 @@ static jerry_value_t zjs_gfx_flush(gfx_handle_t *gfxHandle)
                     currW++;
                 }
                 // Send the buffer once its full or we are at the end
-                if (bufferIndex == recBuf->bufsize) {
+                if (bufferIndex == recBuf->bufsize || currY > gfxHandle->tpY1) {
                     ret = zjs_gfx_call_cb(xStart, yStart, currW, currH, recBufObj, gfxHandle);
+                    if (currY > gfxHandle->tpY1)
+                        ZJS_PRINT("BJONES past tpY1! %i : %i\n", currY, gfxHandle->tpY1);
                     ZJS_PRINT("%i, %i, %i, %i\n",xStart, yStart, currW, currH);
                     if (jerry_value_has_error_flag (ret)) {
                         zjs_gfx_reset_touched_pixels(gfxHandle);
@@ -244,7 +246,7 @@ static jerry_value_t zjs_gfx_flush(gfx_handle_t *gfxHandle)
 
             currX = gfxHandle->tpX0;
             // If the last pass needs less pixels than the others, print it now
-
+/*
             if (currY > gfxHandle->tpY1 && currPass < passes) {
                 ZJS_PRINT("BJONES we are past the end of the screen, currh = %i : rowsPerBuf = %i\n ", currH, rowsPerBuf);
                 ZJS_PRINT("%i, %i, %i, %i\n",xStart, yStart, currW, currH);
@@ -254,7 +256,7 @@ static jerry_value_t zjs_gfx_flush(gfx_handle_t *gfxHandle)
                     return ret;
                 }
                 currPass++;
-            }
+            }*/
         }
     }
     zjs_gfx_reset_touched_pixels(gfxHandle);
