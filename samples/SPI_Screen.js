@@ -19,6 +19,8 @@ var WHITE =  [0xFF, 0xFF];
 
 // Load the screen, gpio, and GFX modules
 var LCD = require("ST7735.js");
+var board = require('board');
+var drawImmediate = board.name === "arduino_101" ? true : false;
 var gpio = require('gpio');
 var gfxLib = require("gfx");
 
@@ -26,36 +28,37 @@ console.log("SPI screen test starting..");
 
 try {
     // Initialize the screen
-    //BJONES its failinig in init, so figure out why on monday.
-    var GFX = gfxLib.init(LCD.width, LCD.height, LCD.initScreen, LCD.drawCB, LCD);
-    console.log("after init");
-    //GFX.fillRect(0, 0, 100, 100, BLACK);
-    //GFX.flush();
-
-    console.log("BJONES w / h = " + LCD.width + " / " + LCD.height);
+    var GFX = gfxLib.init(LCD.width, LCD.height, LCD.initScreen, LCD.drawCB,
+                          drawImmediate, LCD);
+/*
+    currCol = RED;
+    for (var i =0; i < LCD.height; i++) {
+        GFX.drawHLine(0,i,LCD.width,currCol);
+        if (currCol == RED)
+            currCol = BLUE;
+        else {
+            currCol = RED;
+        }
+    }
+*/
     GFX.fillRect(0, 0, LCD.width, LCD.height, BLACK);
-    //GFX.fillRect(0, 0, 30, 30, RED);
-    //GFX.fillRect(30, 30, 30, 30, GREEN);
-
+    /*
     GFX.drawVLine(123, 0, 160, RED, 5);
-
     GFX.drawVLine(118, 0, 160, YELLOW, 3);
     GFX.drawVLine(113, 0, 160, WHITE);
     GFX.drawLine(0, 20, 100, 160, WHITE, 15);
     GFX.drawLine(0, 10, 115, 160, BLUE, 10);
     GFX.drawLine(0, 0, 128, 160, RED);
-    GFX.flush();    //BJONES TODO make flush do nothing in immediate mode
-    console.log("flush1");
+    GFX.flush();
     GFX.drawString(0, 20, "Hello", RED, 2);
     GFX.flush();
-console.log("flush1");
     GFX.drawString(0, 35, "WORLD", [0x06, 0x1F], 3);
     GFX.flush();
-console.log("flush1");
     GFX.drawChar(20, 60,'Z', YELLOW, 3);
     GFX.drawChar(40, 70,'J', YELLOW, 3);
     GFX.drawChar(60, 80,'S', YELLOW, 3)
-    GFX.flush();
+    GFX.flush();*/
 } catch (err) {
   console.log("Screen error: " + err.message);
 }
+// 0, 159, 128, 1 -> last line for the for loop above
