@@ -30,26 +30,21 @@ try {
     // Initialize the screen
     var GFX = gfxLib.init(LCD.width, LCD.height, LCD.initScreen, LCD.drawCB,
                           drawImmediate, LCD);
-/*
-    currCol = RED;
-    for (var i =0; i < LCD.height; i++) {
-        GFX.drawHLine(0,i,LCD.width,currCol);
-        if (currCol == RED)
-            currCol = BLUE;
-        else {
-            currCol = RED;
-        }
-    }
-*/
+
+  // GFX.fillRect(0, 0, LCD.width -1, 1, BLUE);
+  // GFX.fillRect(0, 1, LCD.width , 1, YELLOW);
+  //   GFX.fillRect(0, LCD.height - 1, LCD.width , 1, BLUE);
+  //   GFX.fillRect(0, LCD.height - 2, LCD.width -1, 1, YELLOW);
     GFX.fillRect(0, 0, LCD.width, LCD.height, BLACK);
-    /*
+
     GFX.drawVLine(123, 0, 160, RED, 5);
     GFX.drawVLine(118, 0, 160, YELLOW, 3);
     GFX.drawVLine(113, 0, 160, WHITE);
     GFX.drawLine(0, 20, 100, 160, WHITE, 15);
-    GFX.drawLine(0, 10, 115, 160, BLUE, 10);
-    GFX.drawLine(0, 0, 128, 160, RED);
+    GFX.drawLine(0, 10, 115, 100, BLUE, 10);
+    GFX.drawLine(0, 0, 128, 60, RED);
     GFX.flush();
+    /*
     GFX.drawString(0, 20, "Hello", RED, 2);
     GFX.flush();
     GFX.drawString(0, 35, "WORLD", [0x06, 0x1F], 3);
@@ -61,4 +56,3 @@ try {
 } catch (err) {
   console.log("Screen error: " + err.message);
 }
-// 0, 159, 128, 1 -> last line for the for loop above
