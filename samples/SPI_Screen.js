@@ -36,23 +36,24 @@ try {
   //   GFX.fillRect(0, LCD.height - 1, LCD.width , 1, BLUE);
   //   GFX.fillRect(0, LCD.height - 2, LCD.width -1, 1, YELLOW);
     GFX.fillRect(0, 0, LCD.width, LCD.height, BLACK);
+    GFX.flush();
 
-    GFX.drawVLine(123, 0, 160, RED, 5);
+    GFX.drawVLine(123, 0, 160, GREEN, 5);
     GFX.drawVLine(118, 0, 160, YELLOW, 3);
     GFX.drawVLine(113, 0, 160, WHITE);
-    GFX.drawLine(0, 20, 100, 160, WHITE, 15);
-    GFX.drawLine(0, 10, 115, 100, BLUE, 10);
-    GFX.drawLine(0, 0, 128, 60, RED);
+    GFX.drawLine(0, 20, 110, 160, WHITE, 15);
+    GFX.drawLine(0, 10, 118, 160, BLUE, 10);
+    GFX.drawLine(0, 0, 127, 160, RED);
     GFX.flush();
-    /*
+
     GFX.drawString(0, 20, "Hello", RED, 2);
     GFX.flush();
     GFX.drawString(0, 35, "WORLD", [0x06, 0x1F], 3);
     GFX.flush();
-    GFX.drawChar(20, 60,'Z', YELLOW, 3);
-    GFX.drawChar(40, 70,'J', YELLOW, 3);
-    GFX.drawChar(60, 80,'S', YELLOW, 3)
-    GFX.flush();*/
+    GFX.drawChar(20, 70,'Z', YELLOW, 3);
+    GFX.drawChar(40, 80,'J', YELLOW, 3);
+    GFX.drawChar(60, 90,'S', YELLOW, 3)
+    GFX.flush();
 } catch (err) {
   console.log("Screen error: " + err.message);
 }

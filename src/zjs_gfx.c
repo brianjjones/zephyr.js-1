@@ -23,6 +23,7 @@ typedef struct gfx_handle {
     u16_t tpX1;     // Touched pixels x end
     u16_t tpY0;     // Touched pixels y start
     u16_t tpY1;     // Touched pixels y end
+    bool touched;
     u8_t fillStyle[COLORBYTES];
     jerry_value_t screenInitCB;
     jerry_value_t drawDataCB;
@@ -42,7 +43,7 @@ static jerry_value_t zjs_gfx_prototype;
 // Whether we are in draw immediate mode.  This mode takes far less RAM, but
 // is much slower and shows the lines being drawn in real time vs all at once.
 bool drawImmediate = true;
-
+bool big = false;   //BJONES
 // Draw function depends on whether we are in immediate draw mode or not.
 // It gets set by init
 void (*zjs_gfx_draw_pixels)(u32_t, u32_t, u32_t, u32_t, u8_t[], gfx_handle_t*);
@@ -100,27 +101,49 @@ static void zjs_gfx_reset_touched_pixels(gfx_handle_t *gfxHandle)
     gfxHandle->tpX1 = 0;
     gfxHandle->tpY0 = gfxHandle->screenH;
     gfxHandle->tpY1 = 0;
+    gfxHandle->touched = false;
 }
 
 static void zjs_gfx_touch_pixels(u32_t x, u32_t y, u32_t w, u32_t h, u8_t color[], gfx_handle_t *gfxHandle)
 {   // Check that x and y aren't past the screen
+
+    if (x > 127)
+        ZJS_PRINT("Touch - X > 127 == %i, w == %i, curr X0, X1 = %i : %i\n", x, w, gfxHandle->tpX0, gfxHandle->tpX1);
+
+
+    // if (x >= gfxHandle->screenW || x < 0 || y >= gfxHandle->screenH || y < 0){
+    //     ZJS_PRINT("SKIPPING!\n");
+    //     return;
+    // }
     if (x > gfxHandle->screenW || y > gfxHandle->screenH)
         return;
 
-    if (gfxHandle->tpX0 > x ) {
-            gfxHandle->tpX0 = x;
+    if (x >= gfxHandle->screenW) {
+        ZJS_PRINT("X IS EQUAL\n");
+        x = gfxHandle->screenW - 1;
     }
+    if (y >= gfxHandle->screenH) {
+        ZJS_PRINT("Y IS EQUAL\n");
+        y = gfxHandle->screenH - 1;
+    }
+
     if (gfxHandle->tpX1 < x + w - 1) {
         if (x + w -1 < gfxHandle->screenW) {
             gfxHandle->tpX1 = x + w -1;
             //ZJS_PRINT("BJONES smaller than w %i < %i\n", gfxHandle->tpX1, gfxHandle->screenW);
         }
         else{
+            ZJS_PRINT("BEFORE tpX1 = %i, x = %i, y =%i, w = %i, h = %i\n", gfxHandle->tpX1, x, y, w, h);
             gfxHandle->tpX1 = gfxHandle->screenW - 1;   //BJONES do I need the -1?
            ZJS_PRINT("BJONES BIGGER than w %i > %i\n", gfxHandle->tpX1, gfxHandle->screenW);
+           big = true;
+           if (big)
+               ZJS_PRINT("BJONE BIG SET\n");
         }
 
     }
+
+
     if (gfxHandle->tpY0 > y) {
         gfxHandle->tpY0 = y;
     }
@@ -135,25 +158,43 @@ static void zjs_gfx_touch_pixels(u32_t x, u32_t y, u32_t w, u32_t h, u8_t color[
         }
     }
 
+    if (gfxHandle->tpX0 > x ) {
+        if (x == 127)
+            ZJS_PRINT("BJONES!! X0 = %i,  X1 = %i, Y0 = %i, Y1=%i\n", x, gfxHandle->tpX1, gfxHandle->tpY0, gfxHandle->tpY1);
+            gfxHandle->tpX0 = x;
+    }
+
+    if (big)
+        ZJS_PRINT("BJONES before !drawImmediate\n");
+
+    if (gfxHandle->tpX0 > gfxHandle->tpX1)
+        ZJS_PRINT("X IS BIGGER THAN X1 %i > %i\n", gfxHandle->tpX0, gfxHandle->tpX1);
     if (!drawImmediate) {
         // Update the pixel map
+        if (big)
+            ZJS_PRINT("BJONES in !drawImmediate\n");
         u16_t pixelsIndex = (x + gfxHandle->screenW * y) * COLORBYTES;
 
         for (u16_t iY = y; iY < y + h; iY++) {
             // Find the pixel's index in the array
             pixelsIndex = (x + gfxHandle->screenW * iY) * COLORBYTES;
             // Don't write past the memory
-            if (pixelsIndex > gfxHandle->pixelsPtr->bufsize)
+            if (pixelsIndex > gfxHandle->pixelsPtr->bufsize) {
+                ZJS_PRINT("Pixel index > bufsize!\n");
                 return;
+            }
             for (u16_t iX = x; iX < x + w; iX++) {
                 // Each pixel can be several bytes, fill them in accordingly
                 for (u8_t cbyte = 0; cbyte < COLORBYTES; cbyte++) {
+                    if(big)
+                        ZJS_PRINT("ABOUT TO WRITE TO %i, %i / %i\n", pixelsIndex + cbyte, pixelsIndex, cbyte);
                     gfxHandle->pixelsPtr->buffer[pixelsIndex + cbyte] = color[cbyte];
                 }
                 pixelsIndex+=COLORBYTES;
             }
         }
     }
+    gfxHandle->touched = true;
 }
 
 static jerry_value_t zjs_gfx_call_cb(u32_t x, u32_t y, u32_t w, u32_t h, jerry_value_t data, gfx_handle_t *gfxHandle)
@@ -174,7 +215,8 @@ static jerry_value_t zjs_gfx_call_cb(u32_t x, u32_t y, u32_t w, u32_t h, jerry_v
 
 static jerry_value_t zjs_gfx_flush(gfx_handle_t *gfxHandle)
 {
-
+    if (!gfxHandle->touched)
+        return ZJS_UNDEFINED;
     u32_t tpW = gfxHandle->tpX1 - gfxHandle->tpX0 + 1 ;
     u32_t tpH = gfxHandle->tpY1 - gfxHandle->tpY0 + 1;
     u32_t pixels = tpW * tpH * COLORBYTES;
@@ -184,6 +226,7 @@ static jerry_value_t zjs_gfx_flush(gfx_handle_t *gfxHandle)
     u8_t passes = 1;    // Number of times the data buffer needs to be sent
     jerry_value_t ret;
     //ZJS_PRINT("bjones tpW %i : tpH %i - tpx1 = %i, tpy1 = %i\n", tpW, tpH, gfxHandle->tpX1, gfxHandle->tpY1);
+
     if (pixels > MAXPIXELS) {
         u32_t  bytesPerRow = tpW * COLORBYTES;
         u32_t rowsPerBuf = MAXPIXELS /  bytesPerRow;
@@ -197,11 +240,14 @@ static jerry_value_t zjs_gfx_flush(gfx_handle_t *gfxHandle)
     }
     // If there are a lot of passes, it will be faster to draw the whole buffer
     // Not valid for draw immidiate mode
+
     if (passes > 10 && !drawImmediate) {    //BJONES TODO if total pixels > 50% of the screen, draw the whole thing
         ret = zjs_gfx_call_cb(0, 0, gfxHandle->screenW, gfxHandle->screenH, gfxHandle->pixels, gfxHandle);
     }
     else {
     //    ZJS_PRINT("BJONES pixels = %i, passes = %i,\n", pixels, passes);
+
+
         ZVAL recBufObj =  zjs_buffer_create(pixels, &recBuf);
         u32_t xStart = gfxHandle->tpX0;
         u32_t yStart = gfxHandle->tpY0;
@@ -211,12 +257,21 @@ static jerry_value_t zjs_gfx_flush(gfx_handle_t *gfxHandle)
         u32_t currH = 0;
         u16_t currPass = 0;
 
-        for (u16_t j = gfxHandle->tpY0; currPass < passes ; j++) {
+    //BJONES    for (u16_t j = gfxHandle->tpY0; j <= gfxHandle->tpY1 && currPass < passes ; j++) {
+            for (u16_t j = gfxHandle->tpY0; currPass < passes ; j++) {
+                if (j > gfxHandle->tpY1)
+                    ZJS_PRINT("BIGGER Y j = %i, y1 = %i\n", j, gfxHandle->tpY1);
+            if(big)
+                ZJS_PRINT("zjs_gfx_flush line %d, j = %i, currPass = %i, \n", __LINE__, j, currPass);
             currH++;
             currY++;
             xStart = gfxHandle->tpX0;
             //ZJS_PRINT("BJONES origIndex last run was %i\n", origIndex);
+            if (big)
+                ZJS_PRINT("X0 = %i, X1 = %i\n", gfxHandle->tpX0, gfxHandle->tpX1);
             for (u16_t i = gfxHandle->tpX0; i <= gfxHandle->tpX1 && currPass < passes; i++) {
+                if(big)
+                    ZJS_PRINT("zjs_gfx_flush line %d, j = %i, curPass = %i, passes = %i, x = %i, xEnd = %i \n", __LINE__, j, currPass, passes, i, gfxHandle->tpX1);
                 origIndex = (i + gfxHandle->screenW * j) * COLORBYTES;
 
                 // Fill the pixel
@@ -238,6 +293,8 @@ static jerry_value_t zjs_gfx_flush(gfx_handle_t *gfxHandle)
                 }
                 // Send the buffer once its full or we are at the end
                 if (bufferIndex == recBuf->bufsize || currY > gfxHandle->tpY1 + 1) {
+                    if(big)
+                        ZJS_PRINT("zjs_gfx_flush line %d\n", __LINE__);
                     // If we didn't fill the last buffer completely, reset the size
                     if (currY > gfxHandle->tpY1 + 1)
                         ZJS_PRINT("BJONES currY %i> than tpY1 %i\n", currY, gfxHandle->tpY1);
@@ -246,6 +303,8 @@ static jerry_value_t zjs_gfx_flush(gfx_handle_t *gfxHandle)
                     }
                     //ZJS_PRINT("BJONES x = %i, y = %i, w = %i, h = %i, bufsize = %i, X/Y = %i / %i\n", xStart, yStart, currW, currH, recBuf->bufsize, currX, currY );
                     ret = zjs_gfx_call_cb(xStart, yStart, currW, currH, recBufObj, gfxHandle);
+                    if(big)
+                        ZJS_PRINT("zjs_gfx_flush line %d\n", __LINE__);
                     if (jerry_value_has_error_flag (ret)) {
                         zjs_gfx_reset_touched_pixels(gfxHandle);
                         return ret;
@@ -271,9 +330,13 @@ static void zjs_gfx_fill_rect_priv (u32_t x, u32_t y, u32_t w, u32_t h, u8_t col
 {
     zjs_gfx_touch_pixels(x, y, w, h, color, gfxHandle);
     for (u8_t cbyte = 0; cbyte < COLORBYTES; cbyte++) {
+
         gfxHandle->fillStyle[cbyte] = color[cbyte];
     }
+    if (big)
+        ZJS_PRINT("Rect Priv about to call flush\n");
     zjs_gfx_flush(gfxHandle);
+//    ZJS_PRINT("RECT PRIV DONE WITH FLUSH\n");
     //u32_t pixels = w * h * COLORBYTES; // Each pixel has several bytes of data
 }
 
@@ -400,12 +463,29 @@ static ZJS_DECL_FUNC(zjs_gfx_draw_line)
                 neg = true;
 
         u32_t pos = argData.coords[1];
-        int step = yLen / xLen;
+        u32_t step = yLen / xLen;
+        u32_t trueStep = (yLen * 100) / xLen;
+        // BJONES TODO instead do xLen / yLen to get the number with decimal moved right two places.  Now chop offf the last two didgits,
+        // Thats your remainder.
+        u32_t stepRemain = trueStep - (step * 100);
+        u32_t leftoverStep = 0;
+        u16_t currStep = step;
+        //int step = yLen / xLen;
         ZJS_PRINT("STEP = %i\n", step);
 
         for (u32_t x = argData.coords[0]; x <= argData.coords[2]; x++) {
-            zjs_gfx_draw_pixels(x, pos, argData.size, step, argData.color, handle);
-            pos = neg == false ? pos + step : pos - step;
+            if (leftoverStep > 100) {
+                currStep = step + 1;
+                leftoverStep -= 100;
+            }
+            else {
+                currStep = step;
+            }
+            zjs_gfx_draw_pixels(x, pos, argData.size, currStep, argData.color, handle);
+            pos = neg == false ? pos + currStep : pos - currStep;
+            leftoverStep += stepRemain;
+            if (x + 1 > argData.coords[2])
+                ZJS_PRINT("FINAL LINE = %i, %i, %i, %i\n", pos, x, currStep, leftoverStep);
         }
     }
     else {
@@ -425,30 +505,31 @@ static ZJS_DECL_FUNC(zjs_gfx_draw_line)
             neg = true;
 
         u32_t pos = argData.coords[0];
-        int step = xLen / yLen;
-        float trueStep = xLen / yLen;
+        u32_t step = xLen / yLen;
+        u32_t trueStep = (xLen * 100) / yLen;
         // BJONES TODO instead do xLen / yLen to get the number with decimal moved right two places.  Now chop offf the last two didgits,
         // Thats your remainder.
-        float stepRemain = (xLen / yLen) - step;
-        float leftoverStep = 0;
+        u32_t stepRemain = trueStep - (step * 100);
+        u32_t leftoverStep = 0;
         u16_t currStep = step;
-        ZJS_PRINT("STEP = %i, stepRemain = %9.6f, true = %9.6f\n", step, stepRemain, trueStep);
+        ZJS_PRINT("STEP = %i, stepRemain = %u, true = %u\n", step, stepRemain, trueStep);
         ZJS_PRINT("MOD = %i\n", xLen % yLen);
         for (u32_t y = argData.coords[1]; y <= argData.coords[3]; y++) {
-            if (leftoverStep > 1) {
+            if (leftoverStep > 100) {
                 currStep = step + 1;
-                leftoverStep--;
+                leftoverStep -= 100;
             }
             else {
                 currStep = step;
             }
             zjs_gfx_draw_pixels(pos, y, currStep, argData.size, argData.color, handle);
-            pos = neg == false ? pos + step : pos - step;
+            pos = neg == false ? pos + currStep : pos - currStep;
             leftoverStep += stepRemain;
             if (y + 1 > argData.coords[3])
-                ZJS_PRINT("FINAL LINE = %i, %i, %i\n", pos, y, currStep);
+                ZJS_PRINT("FINAL LINE = %i, %i, %i, %i\n", pos, y, currStep, leftoverStep);
         }
     }
+    ZJS_PRINT("Line draw is done\n");
     return ZJS_UNDEFINED;
 }
 
