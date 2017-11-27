@@ -177,7 +177,7 @@ static jerry_value_t zjs_gfx_call_cb(u32_t x, u32_t y, u32_t w, u32_t h, jerry_v
     jerry_value_t ret = jerry_call_function(gfxHandle->drawDataCB, gfxHandle->jsThis, args, 5);
 
     if (jerry_value_has_error_flag (ret)) {
-        ERR_PRINT("JS callback failed with %lu..\n", ret);
+        ERR_PRINT("JS callback failed with %u..\n", (u32_t)ret);
         return ret;
     }
     return ZJS_UNDEFINED;
