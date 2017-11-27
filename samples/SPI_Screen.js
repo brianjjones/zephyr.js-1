@@ -1,7 +1,7 @@
 // Copyright (c) 2017, Intel Corporation.
 // JS for using the SPI LCD screen ST7735 module
 // Setup:
-// DC - Pin 8
+// DC - Pin 8 for A101, Pin 9 for all others
 // CS - Pin 4
 // RST - Pin 7
 // SCL - Pin 13
@@ -31,10 +31,6 @@ try {
     var GFX = gfxLib.init(LCD.width, LCD.height, LCD.initScreen, LCD.drawCB,
                           drawImmediate, LCD);
 
-  // GFX.fillRect(0, 0, LCD.width -1, 1, BLUE);
-  // GFX.fillRect(0, 1, LCD.width , 1, YELLOW);
-  //   GFX.fillRect(0, LCD.height - 1, LCD.width , 1, BLUE);
-  //   GFX.fillRect(0, LCD.height - 2, LCD.width -1, 1, YELLOW);
     GFX.fillRect(0, 0, LCD.width, LCD.height, BLACK);
     GFX.drawVLine(123, 0, 160, GREEN, 5);
     GFX.drawVLine(118, 0, 160, YELLOW, 3);

@@ -121,7 +121,7 @@ static void zjs_gfx_touch_pixels(u32_t x, u32_t y, u32_t w, u32_t h, u8_t color[
             gfxHandle->tpX1 = x + w -1;
         }
         else{
-            gfxHandle->tpX1 = gfxHandle->screenW - 1;   //BJONES do I need the -1?
+            gfxHandle->tpX1 = gfxHandle->screenW - 1;
         }
 
     }
