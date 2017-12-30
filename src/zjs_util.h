@@ -434,6 +434,10 @@ void free_handle_nop(void *h);
 
 #ifndef ZJS_LINUX_BUILD
 #ifndef ZJS_ASHELL
+//BJONES
+void zjs_reboot();  // Reboots the device
+void zjs_set_boot_cfg(const char *filename);    //BJONES TODO make this bool and return false if the file isn't on the FS
+
 /*
  * Unblock the main loop
  */

@@ -270,6 +270,9 @@ void zjs_modules_init()
     zjs_obj_add_function(global_obj, "eval", native_eval_handler);
     zjs_obj_add_function(global_obj, "print", native_print_handler);
     zjs_obj_add_function(global_obj, "stopJS", stop_js_handler);
+    //BJONES
+    zjs_obj_add_function(global_obj, "reset", zjs_reboot);
+    zjs_obj_add_function(global_obj, "setBootCfg", zjs_set_boot_cfg);
 
     // create the C handler for require JS call
     zjs_obj_add_function(global_obj, "require", native_require_handler);

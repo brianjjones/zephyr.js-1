@@ -15,6 +15,15 @@
 mem_stats_t mem_array[MAX_LIST_SIZE];
 #endif
 
+#ifdef ZJS_BOOT_CFG
+#ifdef CONFIG_BOARD_ARDUINO_101
+#include <qm_init.h>
+#endif
+#include <misc/reboot.h>
+#include "ashell/file-utils.h"
+const char *BUILD_TIMESTAMP = __DATE__ " " __TIME__ "\n";
+#endif
+
 void *zjs_malloc_with_retry(size_t size)
 {
     void *ptr = malloc(size);
@@ -794,6 +803,37 @@ bool zjs_str_matches(char *str, char *array[])
 #ifndef ZJS_LINUX_BUILD
 #ifndef ZJS_ASHELL
 static zjs_port_sem block;
+void zjs_reboot()
+{
+    ZJS_PRINT("BJONES restarting...\n");
+    #ifdef CONFIG_BOARD_ARDUINO_101
+        QM_SCSS_PMU->rstc |= QM_COLD_RESET;
+    #endif
+    sys_reboot(SYS_REBOOT_COLD);
+}
+
+void zjs_set_boot_cfg(const char *filename)
+{
+    if (!fs_exist(filename)) {
+        comms_print("File passed to cfg doesn't exist\n\r\n");
+        return;
+    }
+
+    fs_file_t *file = fs_open_alloc("boot.cfg", "w+");
+    if (!file) {
+        comms_print("Failed to create boot.cfg file\r\n");
+        return;
+    }
+
+    ssize_t written = fs_write(file, BUILD_TIMESTAMP, strlen(BUILD_TIMESTAMP));
+    written += fs_write(file, filename, strlen(filename));
+    if (written <= 0) {
+        comms_print("Failed to write boot.cfg file\r\n");
+    }
+
+    fs_close_alloc(file);
+}
+
 void zjs_loop_unblock(void)
 {
     zjs_port_sem_give(&block);

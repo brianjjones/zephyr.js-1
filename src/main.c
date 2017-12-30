@@ -20,10 +20,12 @@
 #endif  // ZJS_LINUX_BUILD
 #include "zjs_script.h"
 #include "zjs_util.h"
-#ifdef ZJS_ASHELL
+#if defined(ZJS_ASHELL) || defined(ZJS_BOOT_CFG)
 #include <gpio.h>
 #include "zjs_board.h"
+#ifdef ZJS_ASHELL
 #include "ashell/ashell.h"
+#endif
 #include "ashell/file-utils.h"
 #endif
 
@@ -178,7 +180,7 @@ int main(int argc, char *argv[])
     char *script = NULL;
     file_name = argv[1];
     file_name_len = strlen(argv[1]);
-#elif defined ZJS_ASHELL
+#elif defined ZJS_ASHELL || defined ZJS_BOOT_CFG
     char *script = NULL;
 #else
     const char *script = NULL;
@@ -204,10 +206,11 @@ int main(int argc, char *argv[])
     zjs_register_service_routine(NULL, main_poll_routine);
 #endif
 
-#ifdef ZJS_ASHELL
+//BJONES need to change this to work for both ashell and demo
+#if defined(ZJS_ASHELL) || defined(ZJS_BOOT_CFG)
 if (config_mode_detected()) {
     // go into IDE mode if connected GPIO button is pressed
-    ashell_mode = true;
+    //ashell_mode = true; //BJONES
 } else {
     // boot to cfg file if found
     char filename[MAX_FILENAME_SIZE];
