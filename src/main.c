@@ -13,21 +13,22 @@
 #include <bluetooth/storage.h>
 #include <gatt/ipss.h>
 #include "zjs_net_config.h"
-#endif
-#endif
+#endif // CONFIG_NET_L2_BT
+#endif // defined(BUILD_MODULE_BLE) || (CONFIG_NET_L2_BT)
 #else
 #include "zjs_linux_port.h"
 #endif  // ZJS_LINUX_BUILD
+
 #include "zjs_script.h"
 #include "zjs_util.h"
-#if defined(ZJS_ASHELL) || defined(ZJS_BOOT_CFG)
+#if defined (ZJS_ASHELL) || defined (ZJS_BOOT_CFG)
 #include <gpio.h>
 #include "zjs_board.h"
 #ifdef ZJS_ASHELL
 #include "ashell/ashell.h"
-#endif
+#endif // ZJS_ASHELL
 #include "ashell/file-utils.h"
-#endif
+#endif // defined (ZJS_ASHELL) || defined (ZJS_BOOT_CFG)
 
 // JerryScript includes
 #include "jerryscript.h"
@@ -64,16 +65,16 @@ const size_t snapshot_len = sizeof(snapshot_bytecode);
 const char script_jscode[] = {
 #include "zjs_script_gen.h"
 };
-#endif
+#endif // ZJS_SNAPSHOT_BUILD
 
 #ifdef ZJS_ASHELL
 static bool ashell_mode = false;
-#endif
+#endif // ZJS_ASHELL
 
 #ifdef ZJS_DEBUGGER
 static bool start_debug_server = false;
 static uint16_t debug_port = 5001;
-#endif
+#endif // ZJS_DEBUGGER
 
 #ifdef ZJS_LINUX_BUILD
 // enabled if --noexit is passed to jslinux
@@ -96,7 +97,7 @@ u8_t process_cmd_line(int argc, char *argv[])
 #else
             ERR_PRINT("Debugger disabled, rebuild with DEBUGGER=on");
             return 0;
-#endif
+#endif // ZJS_DEBUGGER
         } else if (!strncmp(argv[i], "--noexit", 8)) {
             no_exit = 1;
         } else if (!strncmp(argv[i], "-t", 2)) {
@@ -119,9 +120,9 @@ u8_t process_cmd_line(int argc, char *argv[])
 #ifndef CONFIG_NET_APP_AUTO_INIT
 #ifdef BUILD_MODULE_BLE
 extern void ble_bt_ready(int err);
-#endif
-#endif
-#endif
+#endif // BUILD_MODULE_BLE
+#endif // CONFIG_NET_APP_AUTO_INIT
+#endif // ZJS_LINUX_BUILD
 
 #ifdef ZJS_ASHELL
 static bool config_mode_detected()
@@ -163,15 +164,15 @@ static bool config_mode_detected()
     // always enter IDE mode when IDE_GPIO_PIN is not specified
     DBG_PRINT("IDE_GPIO_PIN not set\n");
     return true;
-#endif
+#endif // IDE_GPIO_PIN
 }
-#endif
+#endif // ZJS_ASHELL
 
 #ifndef ZJS_LINUX_BUILD
 void main(void)
 #else
 int main(int argc, char *argv[])
-#endif
+#endif // ZJS_LINUX_BUILD
 {
 #ifndef ZJS_SNAPSHOT_BUILD
     char *file_name = NULL;
@@ -184,14 +185,14 @@ int main(int argc, char *argv[])
     char *script = NULL;
 #else
     const char *script = NULL;
-#endif
+#endif // ZJS_LINUX_BUILD
     jerry_value_t code_eval;
     u32_t script_len = 0;
-#endif
+#endif  // ZJS_SNAPSHOT_BUILD   //BJONES this is the issue, I have snapshot defined.  Do I want it defined?
 #ifndef ZJS_LINUX_BUILD
     DBG_PRINT("Main Thread ID: %p\n", (void *)k_current_get());
     zjs_loop_init();
-#endif
+#endif // !ZJS_LINUX_BUILD
     jerry_value_t result;
 
     // print newline here to make it easier to find
@@ -204,14 +205,15 @@ int main(int argc, char *argv[])
 
 #ifdef BUILD_MODULE_OCF
     zjs_register_service_routine(NULL, main_poll_routine);
-#endif
+#endif // BUILD_MODULE_OCF
 
 //BJONES need to change this to work for both ashell and demo
 #if defined(ZJS_ASHELL) || defined(ZJS_BOOT_CFG)
-if (config_mode_detected()) {
+//#ifdef ZJS_ASHELL
+//if (config_mode_detected()) {
     // go into IDE mode if connected GPIO button is pressed
     //ashell_mode = true; //BJONES
-} else {
+//} else {
     // boot to cfg file if found
     char filename[MAX_FILENAME_SIZE];
     if (fs_get_boot_cfg_filename(NULL, filename) == 0) {
@@ -235,11 +237,11 @@ if (config_mode_detected()) {
         ZJS_PRINT("JS boot config found, booting JS %s...\n\n\n", filename);
     } else {
         // boot cfg file not found
-        ZJS_PRINT("\nNo JS found, please boot into IDE mode, exiting!\n");
+        ZJS_PRINT("\nNo boot cfg, continuing...\n");
         goto error;
     }
-}
-#endif
+//} BJONES
+#endif //  ZJS_ASHELL || ZJS_BOOT_CFG
 
 #ifndef ZJS_SNAPSHOT_BUILD
 #ifdef ZJS_LINUX_BUILD
@@ -254,14 +256,14 @@ if (config_mode_detected()) {
         }
     } else
     // slightly tricky: reuse next section as else clause
-#endif
+#endif // ZJS_LINUX_BUILD
     {
 #ifdef ZJS_LINUX_BUILD
         script = zjs_malloc(script_len + 1);
         memcpy(script, script_jscode, script_len);
         script[script_len] = '\0';
 #else
-#ifndef ZJS_ASHELL
+#ifndef ZJS_ASHELL  //BJONES check if I need to exclude this for boot, basically I don't want to run the JS built in if there is a boot_cfg
         script_len = strnlen(script_jscode, MAX_SCRIPT_SIZE);
         script = script_jscode;
 #endif

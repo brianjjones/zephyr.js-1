@@ -24,7 +24,7 @@
 #include "zjs_timers.h"
 #include "zjs_util.h"
 #include "jerryscript-ext/module.h"
-#ifdef ZJS_ASHELL
+#if defined(ZJS_ASHELL) || defined(ZJS_BOOT_CFG)
 #include "ashell/file-utils.h"
 #endif
 
@@ -40,7 +40,7 @@ struct routine_map svc_routine_map[NUM_SERVICE_ROUTINES];
 *   Real board JavaScript module resolver (ASHELL only currently)
 ******************************************************************/
 #ifndef ZJS_LINUX_BUILD
-#ifdef ZJS_ASHELL
+#if defined(ZJS_ASHELL) || defined(ZJS_BOOT_CFG) //BJONES
 
 // Eval the JavaScript, and return the module.
 static bool javascript_eval_code(const char *source_buffer, ssize_t size, jerry_value_t *ret_val)
@@ -58,7 +58,7 @@ static bool javascript_eval_code(const char *source_buffer, ssize_t size, jerry_
 static bool load_js_module_fs(const jerry_value_t module_name, jerry_value_t *result)
 {
     // Currently searching the filesystem is only supported on ashell
-#ifdef ZJS_ASHELL
+#if defined(ZJS_ASHELL) || defined(ZJS_BOOT_CFG) //BJONES
     jerry_size_t module_size = jerry_get_utf8_string_size(module_name) + 1;
     char module[module_size];
     zjs_copy_jstring(module_name, module, &module_size);

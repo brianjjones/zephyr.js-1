@@ -7,6 +7,7 @@
 #include "zjs_buffer.h"
 #include "zjs_common.h"
 #include "zjs_util.h"
+#include <misc/reboot.h>
 #ifndef ZJS_LINUX_BUILD
 #include "zjs_zephyr_port.h"
 #endif
@@ -18,8 +19,13 @@ mem_stats_t mem_array[MAX_LIST_SIZE];
 #ifdef ZJS_BOOT_CFG
 #ifdef CONFIG_BOARD_ARDUINO_101
 #include <qm_init.h>
+#include <flash.h>
 #endif
+#include "jerryscript-port.h"
+#include <atomic.h>
+#include <misc/printk.h>
 #include <misc/reboot.h>
+#include <zephyr/types.h>
 #include "ashell/file-utils.h"
 const char *BUILD_TIMESTAMP = __DATE__ " " __TIME__ "\n";
 #endif
@@ -803,6 +809,7 @@ bool zjs_str_matches(char *str, char *array[])
 #ifndef ZJS_LINUX_BUILD
 #ifndef ZJS_ASHELL
 static zjs_port_sem block;
+#ifdef ZJS_BOOT_CFG
 void zjs_reboot()
 {
     ZJS_PRINT("BJONES restarting...\n");
@@ -815,24 +822,25 @@ void zjs_reboot()
 void zjs_set_boot_cfg(const char *filename)
 {
     if (!fs_exist(filename)) {
-        comms_print("File passed to cfg doesn't exist\n\r\n");
+        ZJS_PRINT("File passed to cfg doesn't exist\n\r\n");
         return;
     }
 
     fs_file_t *file = fs_open_alloc("boot.cfg", "w+");
     if (!file) {
-        comms_print("Failed to create boot.cfg file\r\n");
+        ZJS_PRINT("Failed to create boot.cfg file\r\n");
         return;
     }
 
     ssize_t written = fs_write(file, BUILD_TIMESTAMP, strlen(BUILD_TIMESTAMP));
     written += fs_write(file, filename, strlen(filename));
     if (written <= 0) {
-        comms_print("Failed to write boot.cfg file\r\n");
+        ZJS_PRINT("Failed to write boot.cfg file\r\n");
     }
 
     fs_close_alloc(file);
 }
+#endif // ZJS_BOOT_CFG
 
 void zjs_loop_unblock(void)
 {
