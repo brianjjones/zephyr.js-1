@@ -215,6 +215,7 @@ int main(int argc, char *argv[])
     //ashell_mode = true; //BJONES
 //} else {
     // boot to cfg file if found
+
     char filename[MAX_FILENAME_SIZE];
     if (fs_get_boot_cfg_filename(NULL, filename) == 0) {
         // read JS stored in filesystem
@@ -238,12 +239,13 @@ int main(int argc, char *argv[])
     } else {
         // boot cfg file not found
         ZJS_PRINT("\nNo boot cfg, continuing...\n");
-        goto error;
+        //goto error;
     }
 //} BJONES
 #endif //  ZJS_ASHELL || ZJS_BOOT_CFG
-
+ZJS_PRINT("BJONES CHECK 1\n");
 #ifndef ZJS_SNAPSHOT_BUILD
+ZJS_PRINT("BJONES CHECK 2\n");
 #ifdef ZJS_LINUX_BUILD
     if (argc > 1) {
         if (process_cmd_line(argc - 1, argv + 1) == 0) {
@@ -264,10 +266,12 @@ int main(int argc, char *argv[])
         script[script_len] = '\0';
 #else
 #ifndef ZJS_ASHELL  //BJONES check if I need to exclude this for boot, basically I don't want to run the JS built in if there is a boot_cfg
+        ZJS_PRINT("BJONES CHECK 3\n");
         script_len = strnlen(script_jscode, MAX_SCRIPT_SIZE);
         script = script_jscode;
 #endif
 #endif
+    ZJS_PRINT("BJONES CHECK 4\n");
         if (script_len == MAX_SCRIPT_SIZE) {
             ERR_PRINT("Script size too large! Increase MAX_SCRIPT_SIZE.\n");
             goto error;
@@ -282,6 +286,7 @@ if (start_debug_server) {
 #endif
 
 #ifndef ZJS_SNAPSHOT_BUILD
+//    ZJS_PRINT("BJONES parsing file %s\n", file_name);
     code_eval = jerry_parse_named_resource((jerry_char_t *)file_name,
                                            file_name_len,
                                            (jerry_char_t *)script,
@@ -305,6 +310,7 @@ if (start_debug_server) {
 #ifdef ZJS_DEBUGGER
     ZJS_PRINT("Debugger mode: connect using jerry-client-ws.py\n");
 #endif
+    ZJS_PRINT("BJONES bout to jerry_ru\n");
     result = jerry_run(code_eval);
 #endif
 
@@ -356,6 +362,7 @@ if (start_debug_server) {
     }
 #endif
     while (1) {
+        ZJS_PRINT("BJONES CHECK 5\n");
 #ifdef ZJS_ASHELL
         if (ashell_mode) {
             zjs_ashell_process();
