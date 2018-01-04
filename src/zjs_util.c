@@ -27,7 +27,7 @@ mem_stats_t mem_array[MAX_LIST_SIZE];
 #include <misc/reboot.h>
 #include <zephyr/types.h>
 #include "ashell/file-utils.h"
-const char *BUILD_TIMESTAMP = __DATE__ " " __TIME__ "\n";
+//const char *BUILD_TIMESTAMP = __DATE__ " " __TIME__ "\n";
 #endif
 
 void *zjs_malloc_with_retry(size_t size)
@@ -818,11 +818,19 @@ void zjs_reboot()
     #endif
     sys_reboot(SYS_REBOOT_COLD);
 }
-
-void zjs_set_boot_cfg(const char *filename)
+/*
+static ZJS_DECL_FUNC(zjs_set_boot_cfg) // BJONES (const char *filename)
 {
-    if (!fs_exist(filename)) {
-        ZJS_PRINT("File passed to cfg doesn't exist\n\r\n");
+    ZJS_VALIDATE_ARGS(Z_STRING);
+    jerry_size_t file_len = 15;
+    char file_str[file_len];
+    zjs_copy_jstring(argv[0], file_str, &file_len);
+    char blah[10] = "test";
+    ZJS_PRINT("BJONES zjs_set_boot_cfg received %s as the file nam, %s\n", file_str, blah);
+    if (file_str == NULL)
+        ZJS_PRINT("NULL!!!!!!!!\n");
+    if (!fs_exist(file_str)) {
+        ZJS_PRINT("%s doesn't exist\n\r\n", file_str);
         return;
     }
 
@@ -833,13 +841,13 @@ void zjs_set_boot_cfg(const char *filename)
     }
 
     ssize_t written = fs_write(file, BUILD_TIMESTAMP, strlen(BUILD_TIMESTAMP));
-    written += fs_write(file, filename, strlen(filename));
+    written += fs_write(file, file_str, strlen(file_str));
     if (written <= 0) {
         ZJS_PRINT("Failed to write boot.cfg file\r\n");
     }
 
     fs_close_alloc(file);
-}
+}*/
 #endif // ZJS_BOOT_CFG
 
 void zjs_loop_unblock(void)

@@ -436,8 +436,13 @@ void free_handle_nop(void *h);
 #ifndef ZJS_ASHELL
 //BJONES
 void zjs_reboot();  // Reboots the device
-void zjs_set_boot_cfg(const char *filename);    //BJONES TODO make this bool and return false if the file isn't on the FS
+/*
+jerry_value_t name(const jerry_value_t function_obj,                     \
+                   const jerry_value_t this, const jerry_value_t argv[], \
+                   const jerry_length_t argc)
 
+jerry_value_t zjs_set_boot_cfg(const char *filename);    //BJONES TODO make this bool and return false if the file isn't on the FS
+*/
 /*
  * Unblock the main loop
  */

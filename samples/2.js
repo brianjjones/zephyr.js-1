@@ -39,8 +39,8 @@ try {
 //*************************************************************************
 
 var pin3 = gpio.open({pin: '3', mode: 'in', edge: 'rising'});
-var pin4 = gpio.open({pin: '3', mode: 'in', edge: 'rising'});
-var pin6 = gpio.open({pin: '3', mode: 'in', edge: 'rising'});
+var pin4 = gpio.open({pin: '4', mode: 'in', edge: 'rising'});
+var pin6 = gpio.open({pin: '6', mode: 'in', edge: 'rising'});
 
 pin3.onchange = function(event) {
     console.log("Starting 1.js...");

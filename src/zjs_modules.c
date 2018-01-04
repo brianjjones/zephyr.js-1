@@ -17,6 +17,8 @@
 #include "zjs_linux_port.h"
 #endif
 
+const char *BUILD_TIMESTAMP = __DATE__ " " __TIME__ "\n";
+
 #include "zjs_callbacks.h"
 #include "zjs_modules.h"
 #include "zjs_modules_gen.h"
@@ -255,6 +257,51 @@ static ZJS_DECL_FUNC(process_exit)
 }
 #endif
 
+static ZJS_DECL_FUNC(zjs_set_boot_cfg) // BJONES (const char *filename)
+{
+    ZJS_VALIDATE_ARGS(Z_STRING);
+    jerry_size_t file_len = 15;
+    char file_str[file_len];
+    zjs_copy_jstring(argv[0], file_str, &file_len);
+    char blah[10] = "test";
+    ZJS_PRINT("BJONES zjs_set_boot_cfg received %s as the file nam, %s\n", file_str, blah);
+    if (file_str == NULL)
+        ZJS_PRINT("NULL!!!!!!!!\n");
+    if (!fs_exist(file_str)) {
+        ZJS_PRINT("%s doesn't exist\n\r\n", file_str);
+        return;
+    }
+
+    fs_file_t *file = fs_open_alloc("boot.cfg", "w+");
+    if (!file) {
+        ZJS_PRINT("Failed to create boot.cfg file\r\n");
+        return;
+    }
+
+    ssize_t written = fs_write(file, BUILD_TIMESTAMP, strlen(BUILD_TIMESTAMP));
+    written += fs_write(file, file_str, strlen(file_str));
+    if (written <= 0) {
+        ZJS_PRINT("Failed to write boot.cfg file\r\n");
+    }
+
+    fs_close_alloc(file);
+}
+
+static ZJS_DECL_FUNC(zjs_rm_boot)
+{
+    // char filename[MAX_FILENAME_SIZE];
+    // if (ashell_get_filename_buffer("boot.cfg", filename) <= 0) {
+    //     return RET_OK;
+    // }
+    ZJS_PRINT("BJONES trying to remove boot_cfg\n");
+    int res = fs_unlink("boot.cfg");
+    if (!res)
+        return ZJS_UNDEFINED;
+
+    ZJS_PRINT("BJONES no boot.cfg found\n");
+    return ZJS_UNDEFINED;
+}
+
 void zjs_modules_init()
 {
     // Add module.exports to global namespace
@@ -273,6 +320,7 @@ void zjs_modules_init()
     //BJONES
     zjs_obj_add_function(global_obj, "reset", zjs_reboot);
     zjs_obj_add_function(global_obj, "setBootCfg", zjs_set_boot_cfg);
+    zjs_obj_add_function(global_obj, "rmBootCfg", zjs_rm_boot);
 
     // create the C handler for require JS call
     zjs_obj_add_function(global_obj, "require", native_require_handler);

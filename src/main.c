@@ -67,6 +67,8 @@ const char script_jscode[] = {
 };
 #endif // ZJS_SNAPSHOT_BUILD
 
+bool boot_cfg = false;
+
 #ifdef ZJS_ASHELL
 static bool ashell_mode = false;
 #endif // ZJS_ASHELL
@@ -236,6 +238,7 @@ int main(int argc, char *argv[])
         }
         script[script_len] = '\0';
         ZJS_PRINT("JS boot config found, booting JS %s...\n\n\n", filename);
+        boot_cfg = true;
     } else {
         // boot cfg file not found
         ZJS_PRINT("\nNo boot cfg, continuing...\n");
@@ -266,9 +269,12 @@ ZJS_PRINT("BJONES CHECK 2\n");
         script[script_len] = '\0';
 #else
 #ifndef ZJS_ASHELL  //BJONES check if I need to exclude this for boot, basically I don't want to run the JS built in if there is a boot_cfg
-        ZJS_PRINT("BJONES CHECK 3\n");
-        script_len = strnlen(script_jscode, MAX_SCRIPT_SIZE);
-        script = script_jscode;
+        if (!boot_cfg) {
+            ZJS_PRINT("BJONES CHECK 3\n");
+
+            script_len = strnlen(script_jscode, MAX_SCRIPT_SIZE);
+            script = script_jscode;
+        }
 #endif
 #endif
     ZJS_PRINT("BJONES CHECK 4\n");

@@ -6,7 +6,8 @@
 // RST - Pin 7
 // SCL - Pin 13
 // SDA - Pin 11
-var fs = require('fs');
+var LCD = require("ST7735.js");
+//var fs = require('fs');
 // Color definitions
 var BLACK =  [0x00, 0x00];
 var BLUE  =  [0x00, 0x1F];
@@ -18,11 +19,12 @@ var YELLOW =  [0xFF, 0xE0];
 var WHITE =  [0xFF, 0xFF];
 
 // Load the screen, gpio, and GFX modules
-var LCD = require("ST7735.js");
+
 var board = require('board');
 var drawImmediate = board.name === "arduino_101" ? true : false;
 var gpio = require('gpio');
 var gfxLib = require("gfx");
+rmBootCfg();
 
 console.log("Program 1 starting..");
 
@@ -40,8 +42,8 @@ try {
 //*************************************************************************
 
 var pin3 = gpio.open({pin: '3', mode: 'in', edge: 'rising'});
-var pin4 = gpio.open({pin: '3', mode: 'in', edge: 'rising'});
-var pin6 = gpio.open({pin: '3', mode: 'in', edge: 'rising'});
+var pin4 = gpio.open({pin: '4', mode: 'in', edge: 'rising'});
+var pin6 = gpio.open({pin: '6', mode: 'in', edge: 'rising'});
 
 pin3.onchange = function(event) {
     console.log("Starting 1.js...");
