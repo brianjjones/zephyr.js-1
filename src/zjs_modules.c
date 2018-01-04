@@ -256,7 +256,7 @@ static ZJS_DECL_FUNC(process_exit)
     exit(status);
 }
 #endif
-
+#ifdef ZJS_BOOT_CFG
 static ZJS_DECL_FUNC(zjs_set_boot_cfg) // BJONES (const char *filename)
 {
     ZJS_VALIDATE_ARGS(Z_STRING);
@@ -286,7 +286,7 @@ static ZJS_DECL_FUNC(zjs_set_boot_cfg) // BJONES (const char *filename)
 
     fs_close_alloc(file);
 }
-
+#endif
 static ZJS_DECL_FUNC(zjs_rm_boot)
 {
     // char filename[MAX_FILENAME_SIZE];
