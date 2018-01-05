@@ -6,7 +6,8 @@
 // RST - Pin 7
 // SCL - Pin 13
 // SDA - Pin 11
-var fs = require('fs');
+var LCD = require("ST7735.js");
+//var fs = require('fs');
 // Color definitions
 var BLACK =  [0x00, 0x00];
 var BLUE  =  [0x00, 0x1F];
@@ -18,11 +19,12 @@ var YELLOW =  [0xFF, 0xE0];
 var WHITE =  [0xFF, 0xFF];
 
 // Load the screen, gpio, and GFX modules
-var LCD = require("ST7735.js");
+
 var board = require('board');
 var drawImmediate = board.name === "arduino_101" ? true : false;
 var gpio = require('gpio');
 var gfxLib = require("gfx");
+rmBootCfg();
 
 console.log("Program 2 starting..");
 
@@ -30,17 +32,18 @@ try {
     // Initialize the screen
     var GFX = gfxLib.init(LCD.width, LCD.height, LCD.initScreen, LCD.drawCB,
                           drawImmediate, LCD);
-    GFX.fillRect(0, 0, LCD.width, LCD.height, [0X03, 0X03]);
-    GFX.drawString(0, 20, "Program 2", BLUE, 2);
+    GFX.fillRect(0, 0, LCD.width, LCD.height, [0X01, 0X01]);
+    GFX.drawString(0, 20, "Program 2", RED, 2);
     GFX.flush();
 } catch (err) {
   console.log("Screen error: " + err.message);
 }
+
 //*************************************************************************
 
 var pin3 = gpio.open({pin: '3', mode: 'in', edge: 'rising'});
-var pin4 = gpio.open({pin: '4', mode: 'in', edge: 'rising'});
-var pin6 = gpio.open({pin: '6', mode: 'in', edge: 'rising'});
+var pin2 = gpio.open({pin: '2', mode: 'in', edge: 'rising'});
+var pin5 = gpio.open({pin: '5', mode: 'in', edge: 'rising'});
 
 pin3.onchange = function(event) {
     console.log("Starting 1.js...");
@@ -48,13 +51,12 @@ pin3.onchange = function(event) {
     reset();
 };
 
-pin4.onchange = function(event) {
-    console.log("Starting 2.js...");
-    setBootCfg("2.js");
+pin2.onchange = function(event) {
+    console.log("Going to main menu...");
     reset();
 };
 
-pin6.onchange = function(event) {
+pin5.onchange = function(event) {
     console.log("Starting 3.js...");
     setBootCfg("3.js");
     reset();

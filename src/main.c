@@ -368,7 +368,7 @@ if (start_debug_server) {
     }
 #endif
     while (1) {
-        ZJS_PRINT("BJONES CHECK 5\n");
+    //    ZJS_PRINT("BJONES CHECK 5\n");
 #ifdef ZJS_ASHELL
         if (ashell_mode) {
             zjs_ashell_process();

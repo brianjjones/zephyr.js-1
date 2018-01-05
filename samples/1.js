@@ -42,22 +42,21 @@ try {
 //*************************************************************************
 
 var pin3 = gpio.open({pin: '3', mode: 'in', edge: 'rising'});
-var pin4 = gpio.open({pin: '4', mode: 'in', edge: 'rising'});
-var pin6 = gpio.open({pin: '6', mode: 'in', edge: 'rising'});
+var pin2 = gpio.open({pin: '2', mode: 'in', edge: 'rising'});
+var pin5 = gpio.open({pin: '5', mode: 'in', edge: 'rising'});
 
 pin3.onchange = function(event) {
-    console.log("Starting 1.js...");
-    setBootCfg("1.js");
+    console.log("Going to main menu...");
     reset();
 };
 
-pin4.onchange = function(event) {
+pin2.onchange = function(event) {
     console.log("Starting 2.js...");
     setBootCfg("2.js");
     reset();
 };
 
-pin6.onchange = function(event) {
+pin5.onchange = function(event) {
     console.log("Starting 3.js...");
     setBootCfg("3.js");
     reset();

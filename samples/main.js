@@ -8,6 +8,7 @@
 // SDA - Pin 11
 
 var LCD = require("ST7735.js");
+var aio = require("aio");
 //var fs = require('fs');
 // Color definitions
 var BLACK =  [0x00, 0x00];
@@ -18,6 +19,9 @@ var CYAN  =  [0x07, 0xFF];
 var MAGENTA = [0xF8, 0x1F];
 var YELLOW =  [0xFF, 0xE0];
 var WHITE =  [0xFF, 0xFF];
+
+var lastX = 70;
+var lastY = 70;
 
 // Load the screen, gpio, and GFX modules
 
@@ -47,23 +51,46 @@ try {
 //*************************************************************************
 
 var pin3 = gpio.open({pin: '3', mode: 'in', edge: 'rising'});
-//var pin4 = gpio.open({pin: '4', mode: 'in', edge: 'rising'});
-//var pin6 = gpio.open({pin: '6', mode: 'in', edge: 'rising'});
+var pin2 = gpio.open({pin: '12', mode: 'in', edge: 'rising'});
+var pin5 = gpio.open({pin: '5', mode: 'in', edge: 'rising'});
+var pinX = aio.open({ pin: 'A0' });
+var pinY = aio.open({ pin: 'A1' });
 
 pin3.onchange = function(event) {
     console.log("Starting 1.js...");
     setBootCfg("1.js");
     reset();
 };
-//
-// pin4.onchange = function(event) {
-//     console.log("Starting 2.js...");
-//     setBootCfg("2.js");
-//     reset();
-// };
-//
-// pin6.onchange = function(event) {
-//     console.log("Starting 3.js...");
-//     setBootCfg("3.js");
-//     reset();
-// };
+
+pin2.onchange = function(event) {
+    console.log("Starting 2.js...");
+    setBootCfg("2.js");
+    reset();
+};
+
+pin5.onchange = function(event) {
+    console.log("Starting 3.js...");
+    setBootCfg("3.js");
+    reset();
+};
+
+setInterval(function () {
+    // read analog input pin A0
+    var valueX = (pinX.read() * 9 / 1024)// + 48;
+//pinX.read();
+//    console.log("X val is " + valueX);
+
+    var valueY =  (pinY.read() * 9 / 1024)// + 48;
+    //console.log("Y val is " + valueY);
+
+    if (valueX > 3000)
+        valueX -= 3000;
+    if (valueY > 3000)
+        valueY -= 3000;
+    if (valueX < LCD.width && valueY < LCD.height) {
+    //    GFX.drawPixel(valueX, valueY, GREEN);
+        GFX.drawLine(lastX, lastY, valueX, valueY, GREEN);
+        lastX = valueX;
+        lastY = valueY;
+    }
+}, 50);
