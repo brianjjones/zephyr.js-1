@@ -22,7 +22,7 @@ var WHITE =  [0xFF, 0xFF];
 
 var lastX = 70;
 var lastY = 70;
-
+var lastColor = RED;
 // Load the screen, gpio, and GFX modules
 
 var board = require('board');
@@ -76,12 +76,32 @@ pin5.onchange = function(event) {
 
 setInterval(function () {
     // read analog input pin A0
-    var valueX = (pinX.read() * 9 / 1024)// + 48;
-//pinX.read();
-//    console.log("X val is " + valueX);
+    var valueX = parseInt(pinX.read() * 9 /1024) // + 48;
+    var valueY =  parseInt(pinY.read() * 9 / 1024)// + 48;
 
-    var valueY =  (pinY.read() * 9 / 1024)// + 48;
-    //console.log("Y val is " + valueY);
+    if (valueX > 25 +3) {
+    //    valueX = (25 - valueX) + lastX;
+        valueX = lastX + 3;
+    }
+    else if (valueX < 24 -3)
+        valueX = lastX - 3;// (25 - valueX);
+    else {
+        valueX = lastX;
+    }
+
+    if (valueY > 25+3) {
+        valueY = lastY +3; //(25 - valueY) + lastY;
+    }
+    else if (valueY < 24 -3)
+        valueY = lastY - 3// (25 - valueY);
+    else {
+        valueY = lastY;
+    }
+//pinX.read();
+    //console.log("X val is " + valueX);
+    var color = lastColor == RED ? GREEN : RED;
+
+    console.log( valueX + " / " + valueY);
 
     if (valueX > 3000)
         valueX -= 3000;
@@ -89,7 +109,7 @@ setInterval(function () {
         valueY -= 3000;
     if (valueX < LCD.width && valueY < LCD.height) {
     //    GFX.drawPixel(valueX, valueY, GREEN);
-        GFX.drawLine(lastX, lastY, valueX, valueY, GREEN);
+        GFX.drawLine(lastX, lastY, valueX, valueY, color, 2);
         lastX = valueX;
         lastY = valueY;
     }
