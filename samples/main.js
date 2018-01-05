@@ -100,6 +100,7 @@ setInterval(function () {
 //pinX.read();
     //console.log("X val is " + valueX);
     var color = lastColor == RED ? GREEN : RED;
+    lastColor = color;
 
     console.log( valueX + " / " + valueY);
 
