@@ -358,8 +358,42 @@ static ZJS_DECL_FUNC(zjs_run_js)
     //zjs_loop_reset();
     //jerry_release_value(parsed_code);
     //zjs_loop_unblock();
-    return ZJS_UNDEFINED;
+    return ZJS_UNDEFINED; //    BJONES TODO is this a problem? who gets this return since the JS was stopped?
 }
+
+void zjs_BJRUN(char * filename)
+{
+
+
+    ssize_t size;
+    char *buf = NULL;
+    buf = read_file_alloc(filename, &size);
+    //zjs_stop_js();
+    parsed_code = jerry_parse((const jerry_char_t *)buf, size, false);
+    // parsed_code = jerry_parse_named_resource(NULL,
+    //                                        file_len,
+    //                                        (jerry_char_t *)buf,
+    //                                        size,
+    //                                        false);
+    if (jerry_value_has_error_flag(parsed_code)) {
+        ZJS_PRINT("Error parsing JS\n");
+    }
+
+    zjs_free(buf);
+    ZVAL ret_value = jerry_run(parsed_code);
+    if (jerry_value_has_error_flag(ret_value)) {
+        ZJS_PRINT("Error running JS !!!!!!!!!!!!!!!!!!!\n");
+        //zjs_print_error_message(ret_value, ZJS_UNDEFINED);
+    }
+
+
+    ZJS_PRINT("RUNNING!\n");
+    //zjs_loop_reset();
+    //jerry_release_value(parsed_code);
+    //zjs_loop_unblock();
+    return;// ZJS_UNDEFINED; //    BJONES TODO is this a problem? who gets this return since the JS was stopped?
+}
+
 
 void zjs_modules_init()
 {

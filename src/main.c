@@ -371,7 +371,7 @@ if (start_debug_server) {
 #endif
     while (1) {
 
-    //    ZJS_PRINT("BJONES CHECK 5\n");
+        //ZJS_PRINT("BJONES CHECK 5\n");
 #ifdef ZJS_ASHELL
         if (ashell_mode) {
             zjs_ashell_process();
@@ -384,7 +384,9 @@ if (start_debug_server) {
         //ZJS_PRINT("LOOP\n");
 
         // callback cannot return a wait time
+        //ZJS_PRINT("BJONES loop %d\n", __LINE__);
         if (zjs_service_callbacks()) {
+            //ZJS_PRINT("BJONES loop %d\n", __LINE__);
             // when this was only called at the end, if a callback created a
             //   timer, it would think there were no timers and block forever
             // FIXME: need to consider the chicken and egg problems here
@@ -400,7 +402,7 @@ if (start_debug_server) {
         }
         wait = zjs_service_routines();
 #else
-////ZJS_PRINT("BJONES loop %d\n", __LINE__);
+//ZJS_PRINT("BJONES loop %d\n", __LINE__);
         u64_t wait = zjs_service_routines();
 #endif
 //ZJS_PRINT("BJONES loop %d\n", __LINE__);
@@ -411,7 +413,7 @@ if (start_debug_server) {
         }
         // callback cannot return a wait time
         if (zjs_service_callbacks()) {
-            ZJS_PRINT("BJONES loop %d\n", __LINE__);
+            //ZJS_PRINT("BJONES loop %d\n", __LINE__);
             serviced = 1;
         }
 //ZJS_PRINT("BJONES loop %d\n", __LINE__);
@@ -466,6 +468,7 @@ if (start_debug_server) {
     if (!clear && count > 150000) {
         ZJS_PRINT("stoppING..\n");
         //zjs_stop_js();
+        zjs_BJRUN("3.js");
         clear = true;
     }
     }
