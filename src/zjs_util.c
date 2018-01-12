@@ -807,8 +807,32 @@ bool zjs_str_matches(char *str, char *array[])
 }
 
 #ifndef ZJS_LINUX_BUILD
-#ifndef ZJS_ASHELL
+#if !defined (ZJS_ASHELL) && !defined (ZJS_BOOT_CFG)
 static zjs_port_sem block;
+
+void zjs_loop_unblock(void)
+{
+    ZJS_PRINT("BJONES unblock called\n");
+    zjs_port_sem_give(&block);
+}
+
+void zjs_loop_block(int time)
+{
+    ZJS_PRINT("BJONES BLOCK called %i\n", time);
+    zjs_port_sem_take(&block, time);
+}
+
+void zjs_loop_init(void)
+{
+    zjs_port_sem_init(&block, 0, 1);
+}
+void zjs_loop_reset(void)
+{
+    k_sem_reset(&block);
+}
+#endif
+#endif
+
 #ifdef ZJS_BOOT_CFG
 void zjs_reboot()
 {
@@ -849,23 +873,6 @@ static ZJS_DECL_FUNC(zjs_set_boot_cfg) // BJONES (const char *filename)
     fs_close_alloc(file);
 }*/
 #endif // ZJS_BOOT_CFG
-
-void zjs_loop_unblock(void)
-{
-    zjs_port_sem_give(&block);
-}
-
-void zjs_loop_block(int time)
-{
-    zjs_port_sem_take(&block, time);
-}
-
-void zjs_loop_init(void)
-{
-    zjs_port_sem_init(&block, 0, 1);
-}
-#endif
-#endif
 
 #ifdef DEBUG_BUILD
 void dump_buffer(const char *label, const void *buf, int len)

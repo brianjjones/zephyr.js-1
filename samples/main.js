@@ -69,9 +69,11 @@ pin2.onchange = function(event) {
 };
 
 pin5.onchange = function(event) {
+    //stopJS();
     console.log("Starting 3.js...");
-    setBootCfg("3.js");
-    reset();
+    runJS("3.js");
+    //setBootCfg("3.js");
+    //reset();
 };
 
 setInterval(function () {

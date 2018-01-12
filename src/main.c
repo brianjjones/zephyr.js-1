@@ -68,7 +68,8 @@ const char script_jscode[] = {
 #endif // ZJS_SNAPSHOT_BUILD
 
 bool boot_cfg = false;
-
+int count = 0;
+bool clear = false;
 #ifdef ZJS_ASHELL
 static bool ashell_mode = false;
 #endif // ZJS_ASHELL
@@ -319,13 +320,13 @@ if (start_debug_server) {
     ZJS_PRINT("BJONES bout to jerry_ru\n");
     result = jerry_run(code_eval);
 #endif
-
+/*
     if (jerry_value_has_error_flag(result)) {
         DBG_PRINT("Error running JS\n");
         zjs_print_error_message(result, ZJS_UNDEFINED);
         goto error;
     }
-
+*/
 #ifndef ZJS_LINUX_BUILD
 #ifndef ZJS_ASHELL  // Ashell will call bt_enable when module is loaded
 
@@ -353,6 +354,7 @@ if (start_debug_server) {
     // NOTE: don't use ZVAL on these because we want to release them early, so
     //   they don't stick around for the lifetime of the app
 #ifndef ZJS_SNAPSHOT_BUILD
+    ZJS_PRINT("BJONES CODE EVAL RELEASED!\n");
     jerry_release_value(code_eval);
 #endif
 
@@ -368,14 +370,18 @@ if (start_debug_server) {
     }
 #endif
     while (1) {
+
     //    ZJS_PRINT("BJONES CHECK 5\n");
 #ifdef ZJS_ASHELL
         if (ashell_mode) {
             zjs_ashell_process();
         }
 #endif
+        //BJONES TODO this works to keep things going. Why is it being set to FOREVER?
+        //Is this to keep ashell working well? i.e. not do anything until ASHELL requests something?
         s32_t wait_time = ZJS_TICKS_FOREVER;
         u8_t serviced = 0;
+        //ZJS_PRINT("LOOP\n");
 
         // callback cannot return a wait time
         if (zjs_service_callbacks()) {
@@ -384,6 +390,7 @@ if (start_debug_server) {
             // FIXME: need to consider the chicken and egg problems here
             serviced = 1;
         }
+        //ZJS_PRINT("BJONES loop %d\n", __LINE__);
 #ifdef ZJS_LINUX_BUILD
 	// FIXME - reverted patch #1542 to old timer implementation
         u64_t wait = zjs_timers_process_events();
@@ -393,32 +400,41 @@ if (start_debug_server) {
         }
         wait = zjs_service_routines();
 #else
+////ZJS_PRINT("BJONES loop %d\n", __LINE__);
         u64_t wait = zjs_service_routines();
 #endif
+//ZJS_PRINT("BJONES loop %d\n", __LINE__);
         if (wait != ZJS_TICKS_FOREVER) {
+            //ZJS_PRINT("BJONES loop %d\n", __LINE__);
             serviced = 1;
             wait_time = (wait < wait_time) ? wait : wait_time;
         }
         // callback cannot return a wait time
         if (zjs_service_callbacks()) {
+            ZJS_PRINT("BJONES loop %d\n", __LINE__);
             serviced = 1;
         }
-
+//ZJS_PRINT("BJONES loop %d\n", __LINE__);
 #ifdef BUILD_MODULE_PROMISE
+    ZJS_PRINT("INSIDE BUILD_MODULE_PROMISE\n");
         // run queued jobs for promises
         result = jerry_run_all_enqueued_jobs();
         if (jerry_value_has_error_flag(result))
         {
+            ZJS_PRINT("BJONES ERROR IN MAIN LOOP\n");
             DBG_PRINT("Error running JS in promise jobqueue\n");
             zjs_print_error_message(result, ZJS_UNDEFINED);
             goto error;
         }
 #endif
-
+//ZJS_PRINT("BJONES loop %d\n", __LINE__);
 #ifndef ZJS_LINUX_BUILD
+//ZJS_PRINT("BJONES loop %d\n", __LINE__);
         zjs_loop_block(wait_time);
 #endif
+//ZJS_PRINT("BJONES loop %d\n", __LINE__);
 #ifdef ZJS_LINUX_BUILD
+//ZJS_PRINT("BJONES loop %d\n", __LINE__);
         if (!no_exit) {
             // if the last and current loop had no pending "events" (timers or
             // callbacks) and --autoexit is enabled the program will terminate
@@ -443,8 +459,20 @@ if (start_debug_server) {
         }
         last_serviced = serviced;
 #endif
+//ZJS_PRINT("BJONES loop %d\n", __LINE__);
+    if (count % 50000 == 0)
+        ZJS_PRINT("BJONES done with loop...%i\n",count);
+    count++;
+    if (!clear && count > 150000) {
+        ZJS_PRINT("stoppING..\n");
+        //zjs_stop_js();
+        clear = true;
     }
+    }
+
 error:
+ZJS_PRINT("BJONES error hit in main loop returning\n");
+zjs_loop_block(ZJS_TICKS_FOREVER);
 #ifdef ZJS_LINUX_BUILD
     return 1;
 #else

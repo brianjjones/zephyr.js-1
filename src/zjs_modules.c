@@ -36,6 +36,7 @@ struct routine_map {
 };
 
 static u8_t num_routines = 0;
+static jerry_value_t parsed_code = 0;
 struct routine_map svc_routine_map[NUM_SERVICE_ROUTINES];
 
 /*****************************************************************
@@ -229,16 +230,35 @@ static ZJS_DECL_FUNC(native_print_handler)
     zjs_free(str);
     return ZJS_UNDEFINED;
 }
+void zjs_stop_js()
+{
+    if (parsed_code != 0)
+    {
+        jerry_release_value(parsed_code);
+        parsed_code = 0;
+    }
+    ZJS_PRINT("BJONES stop 1\n");
+    zjs_modules_cleanup();
+//    ZJS_PRINT("BJONES stop 2\n");
+    zjs_remove_all_callbacks();
+    //ZJS_PRINT("BJONES stop 3\n");
+    #ifdef CONFIG_BOARD_ARDUINO_101
+    #ifdef CONFIG_IPM
+        zjs_ipm_free_callbacks();
+        ZJS_PRINT("BJONES stop 4\n");
+    #endif
+    #endif
+    jerry_cleanup();
+//    ZJS_PRINT("BJONES stop 5\n");
+    jerry_init(JERRY_INIT_EMPTY);
+    //ZJS_PRINT("BJONES stop 6\n");
+    zjs_modules_init();
+//    ZJS_PRINT("BJONES stop 7\n");
+}
 
 static ZJS_DECL_FUNC(stop_js_handler)
 {
-#ifdef CONFIG_BOARD_ARDUINO_101
-#ifdef CONFIG_IPM
-    zjs_ipm_free_callbacks();
-#endif
-#endif
-    zjs_modules_cleanup();
-    jerry_cleanup();
+    zjs_stop_js();
     return ZJS_UNDEFINED;
 }
 
@@ -263,19 +283,17 @@ static ZJS_DECL_FUNC(zjs_set_boot_cfg) // BJONES (const char *filename)
     jerry_size_t file_len = 15;
     char file_str[file_len];
     zjs_copy_jstring(argv[0], file_str, &file_len);
-    char blah[10] = "test";
-    ZJS_PRINT("BJONES zjs_set_boot_cfg received %s as the file nam, %s\n", file_str, blah);
     if (file_str == NULL)
         ZJS_PRINT("NULL!!!!!!!!\n");
     if (!fs_exist(file_str)) {
         ZJS_PRINT("%s doesn't exist\n\r\n", file_str);
-        return;
+        return ZJS_UNDEFINED;
     }
 
     fs_file_t *file = fs_open_alloc("boot.cfg", "w+");
     if (!file) {
         ZJS_PRINT("Failed to create boot.cfg file\r\n");
-        return;
+        return ZJS_UNDEFINED;
     }
 
     ssize_t written = fs_write(file, BUILD_TIMESTAMP, strlen(BUILD_TIMESTAMP));
@@ -285,6 +303,7 @@ static ZJS_DECL_FUNC(zjs_set_boot_cfg) // BJONES (const char *filename)
     }
 
     fs_close_alloc(file);
+    return ZJS_UNDEFINED;
 }
 #endif
 static ZJS_DECL_FUNC(zjs_rm_boot)
@@ -302,9 +321,51 @@ static ZJS_DECL_FUNC(zjs_rm_boot)
     return ZJS_UNDEFINED;
 }
 
+static ZJS_DECL_FUNC(zjs_run_js)
+{
+    ZJS_VALIDATE_ARGS(Z_STRING);
+    jerry_size_t file_len = 15;
+    ssize_t size;
+    char file_str[file_len];
+    char *buf = NULL;
+    zjs_copy_jstring(argv[0], file_str, &file_len);
+    if (file_str == NULL)
+        ZJS_PRINT("NULL!!!!!!!!\n");
+    ZJS_PRINT("BJONES IN  zjs_run_js for %s\n", file_str);
+    zjs_stop_js();
+    //zjs_loop_unblock();
+    buf = read_file_alloc(file_str, &size);
+    //zjs_stop_js();
+    parsed_code = jerry_parse((const jerry_char_t *)buf, size, false);
+    // parsed_code = jerry_parse_named_resource(NULL,
+    //                                        file_len,
+    //                                        (jerry_char_t *)buf,
+    //                                        size,
+    //                                        false);
+    if (jerry_value_has_error_flag(parsed_code)) {
+        ZJS_PRINT("Error parsing JS\n");
+    }
+
+    zjs_free(buf);
+    ZVAL ret_value = jerry_run(parsed_code);
+    if (jerry_value_has_error_flag(ret_value)) {
+        ZJS_PRINT("Error running JS !!!!!!!!!!!!!!!!!!!\n");
+        //zjs_print_error_message(ret_value, ZJS_UNDEFINED);
+    }
+
+
+    ZJS_PRINT("RUNNING!\n");
+    //zjs_loop_reset();
+    //jerry_release_value(parsed_code);
+    //zjs_loop_unblock();
+    return ZJS_UNDEFINED;
+}
+
 void zjs_modules_init()
 {
+    //static bool inited = false;
     // Add module.exports to global namespace
+    ZJS_PRINT("BJONES zjs_modules_init %d\n", __LINE__);
     ZVAL global_obj = jerry_get_global_object();
     ZVAL modules_obj = zjs_create_object();
     ZVAL exports_obj = zjs_create_object();
@@ -321,10 +382,11 @@ void zjs_modules_init()
     zjs_obj_add_function(global_obj, "reset", zjs_reboot);
     zjs_obj_add_function(global_obj, "setBootCfg", zjs_set_boot_cfg);
     zjs_obj_add_function(global_obj, "rmBootCfg", zjs_rm_boot);
+    zjs_obj_add_function(global_obj, "runJS", zjs_run_js);
 
     // create the C handler for require JS call
     zjs_obj_add_function(global_obj, "require", native_require_handler);
-
+    ZJS_PRINT("BJONES zjs_modules_init %d\n", __LINE__);
 #ifdef ZJS_LINUX_BUILD
     ZVAL process = zjs_create_object();
     zjs_obj_add_function(process, "exit", process_exit);
@@ -332,16 +394,26 @@ void zjs_modules_init()
 #endif
 
     // initialize callbacks early in case any init functions use them
+    // if (!inited){
+    //     ZJS_PRINT("INITTING CALLBACKS!------------------------\n");
     zjs_init_callbacks();
+    // inited = true;
+    // }
+    ZJS_PRINT("BJONES zjs_modules_init %d\n", __LINE__);
     // Load global modules
     int gbl_modcount = sizeof(zjs_global_array) / sizeof(gbl_module_t);
+    ZJS_PRINT("BJONES zjs_modules_init %d\n", __LINE__);
     for (int i = 0; i < gbl_modcount; i++) {
+        ZJS_PRINT("BJONES zjs_modules_init %d\n", __LINE__);
         gbl_module_t *mod = &zjs_global_array[i];
         mod->init();
     }
     // initialize fixed modules
+    ZJS_PRINT("BJONES zjs_modules_init %d\n", __LINE__);
     zjs_error_init();
+    ZJS_PRINT("BJONES zjs_modules_init %d\n", __LINE__);
     zjs_timers_init();
+    ZJS_PRINT("BJONES zjs_modules_init DONE %d\n", __LINE__);
 }
 
 void zjs_modules_cleanup()
