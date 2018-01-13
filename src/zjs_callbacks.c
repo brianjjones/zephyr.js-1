@@ -240,7 +240,7 @@ void zjs_init_callbacks(void)
 #endif
 
     if (!cb_map) {
-        ZJS_PRINT("BJONES zjs_init_callbacks, no cb_map.. making it\n");
+        //ZJS_PRINT("BJONES zjs_init_callbacks, no cb_map.. making it\n");
         size_t size = sizeof(zjs_callback_t *) * INITIAL_CALLBACK_SIZE;
         cb_map = (zjs_callback_t **)zjs_malloc(size);
         if (!cb_map) {
@@ -254,9 +254,9 @@ void zjs_init_callbacks(void)
                            (u32_t *)args_buffer);
 #endif
     ring_buf_initialized = 1;
-    ZJS_PRINT("BJONES zjs_init_callbacks 2\n");
+    //ZJS_PRINT("BJONES zjs_init_callbacks 2\n");
     defer_id = zjs_add_c_callback(NULL, deferred_work_callback);
-    ZJS_PRINT("BJONES zjs_init_callbacks 3\n");
+    //ZJS_PRINT("BJONES zjs_init_callbacks 3\n");
     return;
 }
 
@@ -431,7 +431,7 @@ ZJS_PRINT("BJONES signal callback priv %d\n", id);
         if (in_thread) CB_UNLOCK();
         return;
     }
-    ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
+//    ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
     if (GET_CB_REMOVED(cb_map[id]->flags)) {
         ZJS_PRINT("BJONES SCBP ALREADY REMOVED %d\n", __LINE__);
         DBG_PRINT("callback already removed\n");
@@ -439,7 +439,7 @@ ZJS_PRINT("BJONES signal callback priv %d\n", id);
         return;
     }
     if (GET_TYPE(cb_map[id]->flags) == CALLBACK_TYPE_JS) {
-        ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
+    //    ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
         // for JS, acquire values and release them after servicing callback
         int argc = size / sizeof(jerry_value_t);
         jerry_value_t *values = (jerry_value_t *)args;
@@ -447,38 +447,38 @@ ZJS_PRINT("BJONES signal callback priv %d\n", id);
             jerry_acquire_value(values[i]);
         }
     }
-    ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
+    //ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
 #ifdef INSTRUMENT_CALLBACKS
     set_info_string(cb_map[id]->caller, file, func);
 #endif
     if (in_thread) {
-        ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
+    //    ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
         RB_LOCK();
         key = irq_lock();
     }
-    ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
+    //ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
     int ret = zjs_port_ring_buf_put(&ring_buffer,
                                     (u16_t)id,
                                     0,  // we use value for CB_FLUSH_ONE/ALL
                                     (u32_t *)args,
                                     (u8_t)((size + 3) / 4));
-    ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
+    //ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
     // Need to unlock here or callback may be blocked when it gets called.
     // NOTE: this is a temporary fix, we should implement a lock ID system
     // rather than locking everything, as we are only trying to prevent a
     // callback
     // from being edited and called at the same time.
     if (in_thread) {
-        ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
+        //ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
         irq_unlock(key);
         RB_UNLOCK();
     }
 #ifndef ZJS_LINUX_BUILD
-    ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
+    //ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
     zjs_loop_unblock();
 #endif
     if (ret != 0) {
-        ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
+        //ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
         if (GET_TYPE(cb_map[id]->flags) == CALLBACK_TYPE_JS) {
             // for JS, acquire values and release them after servicing callback
             int argc = size / sizeof(jerry_value_t);
@@ -487,13 +487,13 @@ ZJS_PRINT("BJONES signal callback priv %d\n", id);
                 jerry_release_value(values[i]);
             }
         }
-ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
+//ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
         zjs_ringbuf_error_count++;
         zjs_ringbuf_last_error = ret;
     }
-    ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
+    //ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
     if (in_thread) CB_UNLOCK();
-    ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
+    //ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
 }
 
 zjs_callback_id zjs_add_c_callback(void *handle, zjs_c_callback_func callback)

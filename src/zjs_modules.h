@@ -27,5 +27,5 @@ void zjs_register_service_routine(void *handle, zjs_service_routine func);
 void zjs_unregister_service_routine(zjs_service_routine func);
 s32_t zjs_service_routines(void);
 void zjs_stop_js();
-void zjs_BJRUN(char* filename);
+void zjs_modules_check_load_file();
 #endif  // __zjs_modules_h__

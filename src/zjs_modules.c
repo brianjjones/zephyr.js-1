@@ -35,6 +35,8 @@ struct routine_map {
     void *handle;
 };
 
+static char *load_file;      //BJONES this should only get created when ZJS_BOOT_CFG is present
+
 static u8_t num_routines = 0;
 static jerry_value_t parsed_code = 0;
 struct routine_map svc_routine_map[NUM_SERVICE_ROUTINES];
@@ -321,20 +323,62 @@ static ZJS_DECL_FUNC(zjs_rm_boot)
     return ZJS_UNDEFINED;
 }
 
+void zjs_modules_check_load_file(char *file)
+{
+    if (load_file == NULL) {
+        return;
+    }
+     zjs_stop_js();
+     char *buf = NULL;
+     size_t size;
+     buf = read_file_alloc(load_file, &size);
+     //zjs_stop_js();
+     parsed_code = jerry_parse((const jerry_char_t *)buf, size, false);
+     // parsed_code = jerry_parse_named_resource(NULL,
+     //                                        file_len,
+     //                                        (jerry_char_t *)buf,
+     //                                        size,
+     //                                        false);
+     if (jerry_value_has_error_flag(parsed_code)) {
+         ZJS_PRINT("Error parsing JS\n");
+     }
+
+     zjs_free(buf);
+     ZVAL ret_value = jerry_run(parsed_code);
+     if (jerry_value_has_error_flag(ret_value)) {
+         ZJS_PRINT("Error running JS !!!!!!!!!!!!!!!!!!!\n");
+         //zjs_print_error_message(ret_value, ZJS_UNDEFINED);
+     }
+
+     // Remove the load file so it doesn't load it again
+     zjs_free(load_file);
+     load_file = NULL;
+}
+
 static ZJS_DECL_FUNC(zjs_run_js)
 {
     ZJS_VALIDATE_ARGS(Z_STRING);
-    jerry_size_t file_len = 15;
-    ssize_t size;
-    char file_str[file_len];
+    size_t len = 15;
+    size_t file_len;
+    ZJS_PRINT("BJONES len of file is %zu\n", len);
+    load_file = zjs_malloc(len);
+
     char *buf = NULL;
-    zjs_copy_jstring(argv[0], file_str, &file_len);
-    if (file_str == NULL)
+    zjs_copy_jstring(argv[0], load_file, &file_len);
+    if (load_file == NULL)
         ZJS_PRINT("NULL!!!!!!!!\n");
-    ZJS_PRINT("BJONES IN  zjs_run_js for %s\n", file_str);
-    zjs_stop_js();
+    ZJS_PRINT("BJONES IN  zjs_run_js for %s\n", load_file);
+
+
+    if (!fs_exist(load_file)) {
+        return ZJS_ERROR("File doesn't exist");
+    }
+  //    zjs_modules_set_load_file(file_str);
+
+//    zjs_stop_js();
     //zjs_loop_unblock();
-    buf = read_file_alloc(file_str, &size);
+/*
+    buf = read_file_alloc(load_file, &size);
     //zjs_stop_js();
     parsed_code = jerry_parse((const jerry_char_t *)buf, size, false);
     // parsed_code = jerry_parse_named_resource(NULL,
@@ -352,7 +396,7 @@ static ZJS_DECL_FUNC(zjs_run_js)
         ZJS_PRINT("Error running JS !!!!!!!!!!!!!!!!!!!\n");
         //zjs_print_error_message(ret_value, ZJS_UNDEFINED);
     }
-
+*/
 
     ZJS_PRINT("RUNNING!\n");
     //zjs_loop_reset();
@@ -360,39 +404,39 @@ static ZJS_DECL_FUNC(zjs_run_js)
     //zjs_loop_unblock();
     return ZJS_UNDEFINED; //    BJONES TODO is this a problem? who gets this return since the JS was stopped?
 }
-
-void zjs_BJRUN(char * filename)
-{
-
-
-    ssize_t size;
-    char *buf = NULL;
-    buf = read_file_alloc(filename, &size);
-    //zjs_stop_js();
-    parsed_code = jerry_parse((const jerry_char_t *)buf, size, false);
-    // parsed_code = jerry_parse_named_resource(NULL,
-    //                                        file_len,
-    //                                        (jerry_char_t *)buf,
-    //                                        size,
-    //                                        false);
-    if (jerry_value_has_error_flag(parsed_code)) {
-        ZJS_PRINT("Error parsing JS\n");
-    }
-
-    zjs_free(buf);
-    ZVAL ret_value = jerry_run(parsed_code);
-    if (jerry_value_has_error_flag(ret_value)) {
-        ZJS_PRINT("Error running JS !!!!!!!!!!!!!!!!!!!\n");
-        //zjs_print_error_message(ret_value, ZJS_UNDEFINED);
-    }
-
-
-    ZJS_PRINT("RUNNING!\n");
-    //zjs_loop_reset();
-    //jerry_release_value(parsed_code);
-    //zjs_loop_unblock();
-    return;// ZJS_UNDEFINED; //    BJONES TODO is this a problem? who gets this return since the JS was stopped?
-}
+//
+// void zjs_BJRUN(char * filename)
+// {
+//
+//
+//     ssize_t size;
+//     char *buf = NULL;
+//     buf = read_file_alloc(filename, &size);
+//     //zjs_stop_js();
+//     parsed_code = jerry_parse((const jerry_char_t *)buf, size, false);
+//     // parsed_code = jerry_parse_named_resource(NULL,
+//     //                                        file_len,
+//     //                                        (jerry_char_t *)buf,
+//     //                                        size,
+//     //                                        false);
+//     if (jerry_value_has_error_flag(parsed_code)) {
+//         ZJS_PRINT("Error parsing JS\n");
+//     }
+//
+//     zjs_free(buf);
+//     ZVAL ret_value = jerry_run(parsed_code);
+//     if (jerry_value_has_error_flag(ret_value)) {
+//         ZJS_PRINT("Error running JS !!!!!!!!!!!!!!!!!!!\n");
+//         //zjs_print_error_message(ret_value, ZJS_UNDEFINED);
+//     }
+//
+//
+//     ZJS_PRINT("RUNNING!\n");
+//     //zjs_loop_reset();
+//     //jerry_release_value(parsed_code);
+//     //zjs_loop_unblock();
+//     return;// ZJS_UNDEFINED; //    BJONES TODO is this a problem? who gets this return since the JS was stopped?
+// }
 
 
 void zjs_modules_init()
@@ -420,7 +464,7 @@ void zjs_modules_init()
 
     // create the C handler for require JS call
     zjs_obj_add_function(global_obj, "require", native_require_handler);
-    ZJS_PRINT("BJONES zjs_modules_init %d\n", __LINE__);
+    //ZJS_PRINT("BJONES zjs_modules_init %d\n", __LINE__);
 #ifdef ZJS_LINUX_BUILD
     ZVAL process = zjs_create_object();
     zjs_obj_add_function(process, "exit", process_exit);
@@ -433,19 +477,19 @@ void zjs_modules_init()
     zjs_init_callbacks();
     // inited = true;
     // }
-    ZJS_PRINT("BJONES zjs_modules_init %d\n", __LINE__);
+    //ZJS_PRINT("BJONES zjs_modules_init %d\n", __LINE__);
     // Load global modules
     int gbl_modcount = sizeof(zjs_global_array) / sizeof(gbl_module_t);
-    ZJS_PRINT("BJONES zjs_modules_init %d\n", __LINE__);
+    //ZJS_PRINT("BJONES zjs_modules_init %d\n", __LINE__);
     for (int i = 0; i < gbl_modcount; i++) {
-        ZJS_PRINT("BJONES zjs_modules_init %d\n", __LINE__);
+        //ZJS_PRINT("BJONES zjs_modules_init %d\n", __LINE__);
         gbl_module_t *mod = &zjs_global_array[i];
         mod->init();
     }
     // initialize fixed modules
-    ZJS_PRINT("BJONES zjs_modules_init %d\n", __LINE__);
+    //ZJS_PRINT("BJONES zjs_modules_init %d\n", __LINE__);
     zjs_error_init();
-    ZJS_PRINT("BJONES zjs_modules_init %d\n", __LINE__);
+    //ZJS_PRINT("BJONES zjs_modules_init %d\n", __LINE__);
     zjs_timers_init();
     ZJS_PRINT("BJONES zjs_modules_init DONE %d\n", __LINE__);
 }

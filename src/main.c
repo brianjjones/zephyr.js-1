@@ -372,6 +372,9 @@ if (start_debug_server) {
     while (1) {
 
         //ZJS_PRINT("BJONES CHECK 5\n");
+#ifdef ZJS_BOOT_CFG
+        zjs_modules_check_load_file();
+#endif
 #ifdef ZJS_ASHELL
         if (ashell_mode) {
             zjs_ashell_process();
@@ -465,12 +468,12 @@ if (start_debug_server) {
     if (count % 50000 == 0)
         ZJS_PRINT("BJONES done with loop...%i\n",count);
     count++;
-    if (!clear && count > 150000) {
-        ZJS_PRINT("stoppING..\n");
-        //zjs_stop_js();
-        zjs_BJRUN("3.js");
-        clear = true;
-    }
+    // if (!clear && count > 150000) {
+    //     ZJS_PRINT("stoppING..\n");
+    //     //zjs_stop_js();
+    //     zjs_BJRUN("3.js");
+    //     clear = true;
+    // }
     }
 
 error:
