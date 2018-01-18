@@ -7,7 +7,6 @@
 // SCL - Pin 13
 // SDA - Pin 11
 var LCD = require("ST7735.js");
-//var fs = require('fs');
 // Color definitions
 var BLACK =  [0x00, 0x00];
 var BLUE  =  [0x00, 0x1F];
@@ -24,7 +23,6 @@ var board = require('board');
 var drawImmediate = board.name === "arduino_101" ? true : false;
 var gpio = require('gpio');
 var gfxLib = require("gfx");
-//rmBootCfg();
 
 console.log("Program 3 starting..");
 
@@ -41,15 +39,14 @@ try {
 
 //*************************************************************************
 
-//var pin3 = gpio.open({pin: '3', mode: 'in', edge: 'rising'});
+var pin3 = gpio.open({pin: '3', mode: 'in', edge: 'rising'});
 //var pin2 = gpio.open({pin: '2', mode: 'in', edge: 'rising'});
 var pin5 = gpio.open({pin: '5', mode: 'in', edge: 'rising'});
 //
-// pin3.onchange = function(event) {
-//     console.log("Starting 1.js...");
-//     setBootCfg("1.js");
-//     reset();
-// };
+pin3.onchange = function(event) {
+    console.log("Starting 1.js...");
+    runJS("main.js");
+};
 //
 // pin2.onchange = function(event) {
 //     console.log("Starting 2.js...");
@@ -59,9 +56,8 @@ var pin5 = gpio.open({pin: '5', mode: 'in', edge: 'rising'});
 
 pin5.onchange = function(event) {
     console.log("RUNNING NEW JS");
-//    runJS("auto");
-    // stopJS();
-runJS("3.js");
+
+runJS("1.js");
     //console.log("Going to main menu...");
     //reset();
 };

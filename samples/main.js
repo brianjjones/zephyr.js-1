@@ -51,22 +51,21 @@ try {
 //*************************************************************************
 
 var pin3 = gpio.open({pin: '3', mode: 'in', edge: 'rising'});
-var pin2 = gpio.open({pin: '12', mode: 'in', edge: 'rising'});
+// var pin2 = gpio.open({pin: '12', mode: 'in', edge: 'rising'});
 var pin5 = gpio.open({pin: '5', mode: 'in', edge: 'rising'});
 var pinX = aio.open({ pin: 'A0' });
 var pinY = aio.open({ pin: 'A1' });
 
 pin3.onchange = function(event) {
     console.log("Starting 1.js...");
-    setBootCfg("1.js");
-    reset();
+    runJS("1.js");
 };
 
-pin2.onchange = function(event) {
-    console.log("Starting 2.js...");
-    setBootCfg("2.js");
-    reset();
-};
+// pin2.onchange = function(event) {
+//     console.log("Starting 2.js...");
+//     setBootCfg("2.js");
+//     reset();
+// };
 
 pin5.onchange = function(event) {
     //stopJS();

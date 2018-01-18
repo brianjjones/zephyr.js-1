@@ -24,7 +24,6 @@ var board = require('board');
 var drawImmediate = board.name === "arduino_101" ? true : false;
 var gpio = require('gpio');
 var gfxLib = require("gfx");
-rmBootCfg();
 
 console.log("Program 1 starting..");
 
@@ -42,22 +41,21 @@ try {
 //*************************************************************************
 
 var pin3 = gpio.open({pin: '3', mode: 'in', edge: 'rising'});
-var pin2 = gpio.open({pin: '2', mode: 'in', edge: 'rising'});
+// var pin2 = gpio.open({pin: '2', mode: 'in', edge: 'rising'});
 var pin5 = gpio.open({pin: '5', mode: 'in', edge: 'rising'});
 
 pin3.onchange = function(event) {
-    console.log("Going to main menu...");
-    reset();
+    console.log("Starting main.js...");
+    runJS("main.js");
 };
 
-pin2.onchange = function(event) {
-    console.log("Starting 2.js...");
-    setBootCfg("2.js");
-    reset();
-};
+// pin2.onchange = function(event) {
+//     console.log("Starting 2.js...");
+//     setBootCfg("2.js");
+//     reset();
+// };
 
 pin5.onchange = function(event) {
     console.log("Starting 3.js...");
-    setBootCfg("3.js");
-    reset();
+    runJS("3.js");
 };
