@@ -20,12 +20,14 @@
 #endif  // ZJS_LINUX_BUILD
 #include "zjs_script.h"
 #include "zjs_util.h"
-#ifdef ZJS_ASHELL
+#if defined (ZJS_ASHELL) || defined (ZJS_BOOT_CFG)
 #include <gpio.h>
 #include "zjs_board.h"
+#ifdef ZJS_ASHELL
 #include "ashell/ashell.h"
+#endif // ZJS_ASHELL
 #include "ashell/file-utils.h"
-#endif
+#endif // defined (ZJS_ASHELL) || defined (ZJS_BOOT_CFG)
 
 // JerryScript includes
 #include "jerryscript.h"
@@ -64,6 +66,9 @@ const char script_jscode[] = {
 };
 #endif
 
+bool boot_cfg = false;
+int count = 0;
+bool clear = false;
 #ifdef ZJS_ASHELL
 static bool ashell_mode = false;
 #endif
@@ -183,7 +188,7 @@ int main(int argc, char *argv[])
 
     file_name = argv[1];
     file_name_len = strlen(argv[1]);
-#elif defined ZJS_ASHELL
+#elif defined ZJS_ASHELL || defined ZJS_BOOT_CFG
     char *script = NULL;
 #else
     const char *script = NULL;
@@ -209,11 +214,13 @@ int main(int argc, char *argv[])
     zjs_register_service_routine(NULL, main_poll_routine);
 #endif
 
-#ifdef ZJS_ASHELL
-if (config_mode_detected()) {
+//BJONES need to change this to work for both ashell and demo
+#if defined(ZJS_ASHELL) || defined(ZJS_BOOT_CFG)
+//#ifdef ZJS_ASHELL
+//if (config_mode_detected()) {
     // go into IDE mode if connected GPIO button is pressed
-    ashell_mode = true;
-} else {
+    //ashell_mode = true; //BJONES
+//} else {
     // boot to cfg file if found
     char filename[MAX_FILENAME_SIZE];
     if (fs_get_boot_cfg_filename(NULL, filename) == 0) {
@@ -235,14 +242,15 @@ if (config_mode_detected()) {
         }
         script[script_len] = '\0';
         ZJS_PRINT("JS boot config found, booting JS %s...\n\n\n", filename);
+        boot_cfg = true;
     } else {
         // boot cfg file not found
-        ZJS_PRINT("\nNo JS found, please boot into IDE mode, exiting!\n");
-        goto error;
+        ZJS_PRINT("\nNo boot cfg, continuing...\n");
+        //goto error;
     }
-}
-#endif
-
+//} BJONES
+#endif //  ZJS_ASHELL || ZJS_BOOT_CFG
+ZJS_PRINT("BJONES CHECK 1\n");
 #ifndef ZJS_SNAPSHOT_BUILD
 #ifdef ZJS_LINUX_BUILD
     if (argc > 1) {
@@ -263,9 +271,13 @@ if (config_mode_detected()) {
         memcpy(script, script_jscode, script_len);
         script[script_len] = '\0';
 #else
-#ifndef ZJS_ASHELL
-        script_len = strnlen(script_jscode, MAX_SCRIPT_SIZE);
-        script = script_jscode;
+#ifndef ZJS_ASHELL  //BJONES check if I need to exclude this for boot, basically I don't want to run the JS built in if there is a boot_cfg
+        if (!boot_cfg) {
+            ZJS_PRINT("BJONES CHECK 3\n");
+
+            script_len = strnlen(script_jscode, MAX_SCRIPT_SIZE);
+            script = script_jscode;
+        }
 #endif
 #endif
         if (script_len == MAX_SCRIPT_SIZE) {
@@ -356,6 +368,12 @@ if (start_debug_server) {
     }
 #endif
     while (1) {
+
+        //ZJS_PRINT("BJONES CHECK 5\n");
+#ifdef ZJS_BOOT_CFG
+	// Check if we should load a new JS file
+        zjs_modules_check_load_file();
+#endif
 #ifdef ZJS_ASHELL
         if (ashell_mode) {
             zjs_ashell_process();

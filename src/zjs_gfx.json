@@ -1,9 +1,20 @@
 {
     "module": "gfx",
     "require": "gfx",
-    "depends": ["buffer"],
+    "depends": ["buffer", "fs"],
     "zephyr_conf": {
+        "all": [
+            "CONFIG_REBOOT=y"
+        ]
     },
-    "zjs_config": ["-DBUILD_MODULE_GFX"],
-    "src": ["src/zjs_gfx.c"]
+    "zjs_config": [
+        "-I${ZEPHYR_BASE}/ext/fs/fat/include",
+        "-I./deps",
+        "-DBUILD_MODULE_GFX",
+        "-DZJS_BOOT_CFG"
+    ],
+    "src": [
+        "src/zjs_gfx.c",
+        "src/ashell/file-utils.c"
+    ]
 }
