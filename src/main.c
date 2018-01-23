@@ -20,14 +20,14 @@
 #endif  // ZJS_LINUX_BUILD
 #include "zjs_script.h"
 #include "zjs_util.h"
-#if defined (ZJS_ASHELL) || defined (ZJS_BOOT_CFG)
+#if defined (ZJS_ASHELL) || defined (ZJS_DYNAMIC_LOAD)
 #include <gpio.h>
 #include "zjs_board.h"
 #ifdef ZJS_ASHELL
 #include "ashell/ashell.h"
 #endif // ZJS_ASHELL
 #include "ashell/file-utils.h"
-#endif // defined (ZJS_ASHELL) || defined (ZJS_BOOT_CFG)
+#endif // defined (ZJS_ASHELL) || defined (ZJS_DYNAMIC_LOAD)
 
 // JerryScript includes
 #include "jerryscript.h"
@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
 
     file_name = argv[1];
     file_name_len = strlen(argv[1]);
-#elif defined ZJS_ASHELL || defined ZJS_BOOT_CFG
+#elif defined ZJS_ASHELL || defined ZJS_DYNAMIC_LOAD
     char *script = NULL;
 #else
     const char *script = NULL;
@@ -215,7 +215,7 @@ int main(int argc, char *argv[])
 #endif
 
 //BJONES need to change this to work for both ashell and demo
-#if defined(ZJS_ASHELL) || defined(ZJS_BOOT_CFG)
+#ifdef ZJS_ASHELL //BJONES defined(ZJS_ASHELL) || defined(ZJS_DYNAMIC_LOAD)
 //#ifdef ZJS_ASHELL
 //if (config_mode_detected()) {
     // go into IDE mode if connected GPIO button is pressed
@@ -249,7 +249,7 @@ int main(int argc, char *argv[])
         //goto error;
     }
 //} BJONES
-#endif //  ZJS_ASHELL || ZJS_BOOT_CFG
+#endif //  ZJS_ASHELL || ZJS_DYNAMIC_LOAD
 ZJS_PRINT("BJONES CHECK 1\n");
 #ifndef ZJS_SNAPSHOT_BUILD
 #ifdef ZJS_LINUX_BUILD
@@ -370,7 +370,7 @@ if (start_debug_server) {
     while (1) {
 
         //ZJS_PRINT("BJONES CHECK 5\n");
-#ifdef ZJS_BOOT_CFG
+#ifdef ZJS_DYNAMIC_LOAD
 	// Check if we should load a new JS file
         zjs_modules_check_load_file();
 #endif

@@ -24,7 +24,7 @@
 #include "zjs_timers.h"
 #include "zjs_util.h"
 #include "jerryscript-ext/module.h"
-#if defined(ZJS_ASHELL) || defined(ZJS_BOOT_CFG)
+#if defined(ZJS_ASHELL) || defined(ZJS_DYNAMIC_LOAD)
 #include "ashell/file-utils.h"
 #endif
 
@@ -33,18 +33,17 @@ struct routine_map {
     void *handle;
 };
 
-static char *load_file;      //BJONES this should only get created when ZJS_BOOT_CFG is present
-
+#ifdef ZJS_DYNAMIC_LOAD
+static char *load_file;
+#endif // ZJS_DYNAMIC_LOAD
 static u8_t num_routines = 0;
-static jerry_value_t parsed_code = 0;
 struct routine_map svc_routine_map[NUM_SERVICE_ROUTINES];
 
 /*****************************************************************
 *   Real board JavaScript module resolver (ASHELL only currently)
 ******************************************************************/
 #ifndef ZJS_LINUX_BUILD
-#if defined(ZJS_ASHELL) || defined(ZJS_BOOT_CFG) //BJONES
-
+#if defined(ZJS_ASHELL) || defined(ZJS_DYNAMIC_LOAD)
 // Eval the JavaScript, and return the module.
 static bool javascript_eval_code(const char *source_buffer, ssize_t size, jerry_value_t *ret_val)
 {
@@ -55,13 +54,13 @@ static bool javascript_eval_code(const char *source_buffer, ssize_t size, jerry_
     }
     return true;
 }
-#endif
+#endif  // defined(ZJS_ASHELL) || defined(ZJS_DYNAMIC_LOAD)
 
 // Find the module on the filestystem
 static bool load_js_module_fs(const jerry_value_t module_name, jerry_value_t *result)
 {
-    // Currently searching the filesystem is only supported on ashell
-#if defined(ZJS_ASHELL) || defined(ZJS_BOOT_CFG) //BJONES
+    // Currently searching the filesystem is only supported on arduino 101
+#if defined(ZJS_ASHELL) || defined(ZJS_DYNAMIC_LOAD)
     jerry_size_t module_size = jerry_get_utf8_string_size(module_name) + 1;
     char module[module_size];
     zjs_copy_jstring(module_name, module, &module_size);
@@ -79,7 +78,7 @@ static bool load_js_module_fs(const jerry_value_t module_name, jerry_value_t *re
     return ret;
 #else
     return false;
-#endif
+#endif  // defined(ZJS_ASHELL) || defined(ZJS_DYNAMIC_LOAD)
 
 }
 #else   // ZJS_LINUX_BUILD
@@ -232,11 +231,6 @@ static ZJS_DECL_FUNC(native_print_handler)
 }
 void zjs_stop_js()
 {
-    if (parsed_code != 0)
-    {
-        jerry_release_value(parsed_code);
-        parsed_code = 0;
-    }
     zjs_modules_cleanup();
     zjs_remove_all_callbacks();
     #ifdef CONFIG_BOARD_ARDUINO_101
@@ -269,81 +263,35 @@ static ZJS_DECL_FUNC(process_exit)
     exit(status);
 }
 #endif
-#ifdef ZJS_BOOT_CFG
-static ZJS_DECL_FUNC(zjs_set_boot_cfg) // BJONES (const char *filename)
-{
-    ZJS_VALIDATE_ARGS(Z_STRING);
-    jerry_size_t file_len = 15;
-    char file_str[file_len];
-    zjs_copy_jstring(argv[0], file_str, &file_len);
-    if (file_str == NULL)
-        ZJS_PRINT("NULL!!!!!!!!\n");
-    if (!fs_exist(file_str)) {
-        ZJS_PRINT("%s doesn't exist\n\r\n", file_str);
-        return ZJS_UNDEFINED;
-    }
-
-    fs_file_t *file = fs_open_alloc("boot.cfg", "w+");
-    if (!file) {
-        ZJS_PRINT("Failed to create boot.cfg file\r\n");
-        return ZJS_UNDEFINED;
-    }
-
-    ssize_t written = fs_write(file, BUILD_TIMESTAMP, strlen(BUILD_TIMESTAMP));
-    written += fs_write(file, file_str, strlen(file_str));
-    if (written <= 0) {
-        ZJS_PRINT("Failed to write boot.cfg file\r\n");
-    }
-
-    fs_close_alloc(file);
-    return ZJS_UNDEFINED;
-}
-#endif
-static ZJS_DECL_FUNC(zjs_rm_boot)
-{
-    // char filename[MAX_FILENAME_SIZE];
-    // if (ashell_get_filename_buffer("boot.cfg", filename) <= 0) {
-    //     return RET_OK;
-    // }
-    ZJS_PRINT("BJONES trying to remove boot_cfg\n");
-    int res = fs_unlink("boot.cfg");
-    if (!res)
-        return ZJS_UNDEFINED;
-
-    ZJS_PRINT("BJONES no boot.cfg found\n");
-    return ZJS_UNDEFINED;
-}
-
+#ifdef ZJS_DYNAMIC_LOAD
 void zjs_modules_check_load_file(char *file)
 {
+    // No file waiting to load, just return 
     if (load_file == NULL) {
         return;
     }
-     zjs_stop_js();
-     char *buf = NULL;
-     size_t size;
-     buf = read_file_alloc(load_file, &size);
-     //zjs_stop_js();
-     parsed_code = jerry_parse((const jerry_char_t *)buf, size, false);
-     // parsed_code = jerry_parse_named_resource(NULL,
-     //                                        file_len,
-     //                                        (jerry_char_t *)buf,
-     //                                        size,
-     //                                        false);
-     if (jerry_value_has_error_flag(parsed_code)) {
-         ZJS_PRINT("Error parsing JS\n");
-     }
 
-     zjs_free(buf);
-     ZVAL ret_value = jerry_run(parsed_code);
-     if (jerry_value_has_error_flag(ret_value)) {
-         ZJS_PRINT("Error running JS !!!!!!!!!!!!!!!!!!!\n");
-         //zjs_print_error_message(ret_value, ZJS_UNDEFINED);
-     }
+    zjs_stop_js();
+    char *buf = NULL;
+    size_t size;
+    jerry_value_t parsed_code = 0;
+    buf = read_file_alloc(load_file, &size);
+    parsed_code = jerry_parse((const jerry_char_t *)buf, size, false);
 
-     // Remove the load file so it doesn't load it again
-     zjs_free(load_file);
-     load_file = NULL;
+    if (jerry_value_has_error_flag(parsed_code)) {
+     ERR_PRINT("Error parsing JS\n");
+    }
+
+    zjs_free(buf);
+    ZVAL ret_value = jerry_run(parsed_code);
+    if (jerry_value_has_error_flag(ret_value)) {
+     ERR_PRINT("Error running JS\n");
+    }
+
+    // Remove the load file so it doesn't load it again
+    zjs_free(load_file);
+    load_file = NULL;
+    jerry_release_value(parsed_code);
 }
 
 static ZJS_DECL_FUNC(zjs_run_js)
@@ -353,80 +301,15 @@ static ZJS_DECL_FUNC(zjs_run_js)
     size_t file_len;
     load_file = zjs_malloc(len);
 
-    char *buf = NULL;
     zjs_copy_jstring(argv[0], load_file, &file_len);
-    if (load_file == NULL)
-        ZJS_PRINT("NULL!!!!!!!!\n");
-
 
     if (!fs_exist(load_file)) {
         return ZJS_ERROR("File doesn't exist");
     }
-  //    zjs_modules_set_load_file(file_str);
 
-//    zjs_stop_js();
-    //zjs_loop_unblock();
-/*
-    buf = read_file_alloc(load_file, &size);
-    //zjs_stop_js();
-    parsed_code = jerry_parse((const jerry_char_t *)buf, size, false);
-    // parsed_code = jerry_parse_named_resource(NULL,
-    //                                        file_len,
-    //                                        (jerry_char_t *)buf,
-    //                                        size,
-    //                                        false);
-    if (jerry_value_has_error_flag(parsed_code)) {
-        ZJS_PRINT("Error parsing JS\n");
-    }
-
-    zjs_free(buf);
-    ZVAL ret_value = jerry_run(parsed_code);
-    if (jerry_value_has_error_flag(ret_value)) {
-        ZJS_PRINT("Error running JS !!!!!!!!!!!!!!!!!!!\n");
-        //zjs_print_error_message(ret_value, ZJS_UNDEFINED);
-    }
-*/
-
-    ZJS_PRINT("RUNNING!\n");
-    //zjs_loop_reset();
-    //jerry_release_value(parsed_code);
-    //zjs_loop_unblock();
-    return ZJS_UNDEFINED; //    BJONES TODO is this a problem? who gets this return since the JS was stopped?
+    return ZJS_UNDEFINED;
 }
-//
-// void zjs_BJRUN(char * filename)
-// {
-//
-//
-//     ssize_t size;
-//     char *buf = NULL;
-//     buf = read_file_alloc(filename, &size);
-//     //zjs_stop_js();
-//     parsed_code = jerry_parse((const jerry_char_t *)buf, size, false);
-//     // parsed_code = jerry_parse_named_resource(NULL,
-//     //                                        file_len,
-//     //                                        (jerry_char_t *)buf,
-//     //                                        size,
-//     //                                        false);
-//     if (jerry_value_has_error_flag(parsed_code)) {
-//         ZJS_PRINT("Error parsing JS\n");
-//     }
-//
-//     zjs_free(buf);
-//     ZVAL ret_value = jerry_run(parsed_code);
-//     if (jerry_value_has_error_flag(ret_value)) {
-//         ZJS_PRINT("Error running JS !!!!!!!!!!!!!!!!!!!\n");
-//         //zjs_print_error_message(ret_value, ZJS_UNDEFINED);
-//     }
-//
-//
-//     ZJS_PRINT("RUNNING!\n");
-//     //zjs_loop_reset();
-//     //jerry_release_value(parsed_code);
-//     //zjs_loop_unblock();
-//     return;// ZJS_UNDEFINED; //    BJONES TODO is this a problem? who gets this return since the JS was stopped?
-// }
-
+#endif  // ZJS_DYNAMIC_LOAD
 
 void zjs_modules_init()
 {

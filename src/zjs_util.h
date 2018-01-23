@@ -433,7 +433,7 @@ int zjs_require_string_if_prop_map(jerry_value_t obj, const char *prop,
 void free_handle_nop(void *h);
 
 #ifndef ZJS_LINUX_BUILD
-#if !defined (ZJS_ASHELL) && !defined (ZJS_BOOT_CFG)
+#if !defined (ZJS_ASHELL) && !defined (ZJS_DYNAMIC_LOAD)
 /*
  * Unblock the main loop
  */

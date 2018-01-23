@@ -792,7 +792,7 @@ bool zjs_str_matches(char *str, char *array[])
 }
 
 #ifndef ZJS_LINUX_BUILD
-#if !defined (ZJS_ASHELL) && !defined (ZJS_BOOT_CFG)
+#if !defined (ZJS_ASHELL) && !defined (ZJS_DYNAMIC_LOAD)
 static zjs_port_sem block;
 void zjs_loop_unblock(void)
 {

@@ -11,7 +11,7 @@
         "-I${ZEPHYR_BASE}/ext/fs/fat/include",
         "-I./deps",
         "-DBUILD_MODULE_GFX",
-        "-DZJS_BOOT_CFG"
+        "-DZJS_DYNAMIC_LOAD"
     ],
     "src": [
         "src/zjs_gfx.c",
