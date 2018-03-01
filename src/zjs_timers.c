@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2017, Intel Corporation.
+// Copyright (c) 2016-2018, Intel Corporation.
 
 // C includes
 #include <string.h>
@@ -25,7 +25,7 @@ typedef struct zjs_timer {
     zjs_callback_id callback_id;
     bool repeat;
 #ifdef ZJS_LINUX_BUILD
-    //FIXME - reverted patch #1542 to old timer implementation
+    // FIXME - reverted patch #1542 to old timer implementation
     u32_t interval;
     bool completed;
 #endif
@@ -35,7 +35,7 @@ typedef struct zjs_timer {
 static zjs_timer_t *zjs_timers = NULL;
 
 static const jerry_object_native_info_t timer_type_info = {
-   .free_cb = free_handle_nop
+    .free_cb = free_handle_nop
 };
 
 #ifdef ZJS_LINUX_BUILD
@@ -64,7 +64,8 @@ static void timer_callback(zjs_port_timer_t *handle)
 {
     zjs_timer_t *timer = (zjs_timer_t *)handle->user_data;
 
-    zjs_signal_callback(timer->callback_id, timer->argv, sizeof(jerry_value_t) * timer->argc);
+    zjs_signal_callback(timer->callback_id, timer->argv,
+                        sizeof(jerry_value_t) * timer->argc);
 
     if (!timer->repeat) {
         zjs_port_timer_stop(handle);
@@ -149,20 +150,24 @@ static zjs_timer_t *add_timer(u32_t interval,
 static bool delete_timer(zjs_timer_t *tm)
 {
     if (tm) {
+        // If the timer isn't in the list, its already been deleted
+        if (zjs_timers == NULL ||
+            !ZJS_LIST_REMOVE(zjs_timer_t, zjs_timers, tm)) {
+            return false;
+        }
         zjs_port_timer_stop(&tm->timer);
         for (int i = 0; i < tm->argc; ++i) {
             jerry_release_value(tm->argv[i]);
         }
         // remove callbacks except for expired once timers
 #ifdef ZJS_LINUX_BUILD
-        //FIXME - reverted patch #1542 to old timer implementation
+        // FIXME - reverted patch #1542 to old timer implementation
         if (tm->repeat || !tm->completed) {
 #else
         if (tm->repeat) {
 #endif
             zjs_remove_callback(tm->callback_id);
         }
-        ZJS_LIST_REMOVE(zjs_timer_t, zjs_timers, tm);
         zjs_free(tm->argv);
         zjs_free(tm);
         return true;
@@ -216,16 +221,16 @@ static ZJS_DECL_FUNC(native_clear_interval_handler)
     // FIXME: timers should be ints, not objects!
     ZJS_VALIDATE_ARGS(Z_OBJECT);
 
-    ZJS_GET_HANDLE(argv[0], zjs_timer_t, handle, timer_type_info);
+    ZJS_GET_HANDLE_OR_NULL(argv[0], zjs_timer_t, handle, timer_type_info);
 
     if (!delete_timer(handle))
-        return zjs_error("timer not found");
+        DBG_PRINT("timer not found\n");
 
     return ZJS_UNDEFINED;
 }
 
 #ifdef ZJS_LINUX_BUILD
-//FIXME - reverted patch #1542 to old timer implementation
+// FIXME - reverted patch #1542 to old timer implementation
 s32_t zjs_timers_process_events()
 {
     s32_t wait = ZJS_TICKS_FOREVER;

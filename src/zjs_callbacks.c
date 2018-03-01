@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2017, Intel Corporation.
+// Copyright (c) 2016-2018, Intel Corporation.
 
 // enable for verbose callback detail
 #if 0
@@ -90,14 +90,12 @@ typedef struct zjs_callback {
 static u8_t args_buffer[ZJS_CALLBACK_BUF_SIZE];
 static struct zjs_port_ring_buf ring_buffer;
 #else
-SYS_RING_BUF_DECLARE_POW2(ring_buffer, 5);
+SYS_RING_BUF_DECLARE_POW2(ring_buffer, 6);
 #endif
 static u8_t ring_buf_initialized = 1;
 
 #ifdef ZJS_LINUX_BUILD
 #define k_is_preempt_thread() 0
-#define irq_lock() 0
-#define irq_unlock(key) do {} while (0);
 #define RB_LOCK() do {} while (0)
 #define RB_UNLOCK() do {} while (0)
 #define CB_LOCK() do {} while (0)
@@ -207,7 +205,8 @@ typedef struct deferred_work {
     char data[0];  // user data
 } deferred_work_t;
 
-static void deferred_work_callback(void *handle, const void *args) {
+static void deferred_work_callback(void *handle, const void *args)
+{
     const deferred_work_t *deferred = (const deferred_work_t *)args;
 
 #ifdef DEBUG_CALLBACKS
@@ -229,18 +228,12 @@ static void deferred_work_callback(void *handle, const void *args) {
 
 void zjs_init_callbacks(void)
 {
-    static bool initDone= false;
-    ZJS_PRINT("BJONES zjs_init_callbacks, inited? = %i\n",ring_buf_initialized);
 #ifndef ZJS_LINUX_BUILD
-    if (!initDone) {
-        k_mutex_init(&ring_mutex);
-        k_mutex_init(&cb_mutex);
-        initDone=true;
-    }
+    k_mutex_init(&ring_mutex);
+    k_mutex_init(&cb_mutex);
 #endif
 
     if (!cb_map) {
-        //ZJS_PRINT("BJONES zjs_init_callbacks, no cb_map.. making it\n");
         size_t size = sizeof(zjs_callback_t *) * INITIAL_CALLBACK_SIZE;
         cb_map = (zjs_callback_t **)zjs_malloc(size);
         if (!cb_map) {
@@ -254,9 +247,8 @@ void zjs_init_callbacks(void)
                            (u32_t *)args_buffer);
 #endif
     ring_buf_initialized = 1;
-    //ZJS_PRINT("BJONES zjs_init_callbacks 2\n");
+
     defer_id = zjs_add_c_callback(NULL, deferred_work_callback);
-    //ZJS_PRINT("BJONES zjs_init_callbacks 3\n");
     return;
 }
 
@@ -309,7 +301,7 @@ zjs_callback_id add_callback_priv(jerry_value_t js_func,
     cb_map[new_cb->id] = new_cb;
 
     DBG_PRINT("adding new callback id %d, js_func=%p, once=%u\n", new_cb->id,
-            (void *)(uintptr_t)new_cb->js_func, once);
+              (void *)(uintptr_t)new_cb->js_func, once);
 
 #ifdef INSTRUMENT_CALLBACKS
     set_info_string(cb_map[new_cb->id]->creator, file, func);
@@ -338,44 +330,31 @@ static void zjs_remove_callback_priv(zjs_callback_id id, bool skip_flush)
     if (id >= 0 && cb_map[id]) {
         // Don't free a callback after its been freed
         if (GET_CB_REMOVED(cb_map[id]->flags)) {
-            ZJS_PRINT("zjs_remove_callback_priv already removed\n");
             CB_UNLOCK();
             return;
         }
-        ZJS_PRINT("zjs_remove_callback_priv %d\n", __LINE__);
+
         if (GET_TYPE(cb_map[id]->flags) == CALLBACK_TYPE_JS) {
-            ZJS_PRINT("zjs_remove_callback_priv %d\n", __LINE__);
             jerry_release_value(cb_map[id]->js_func);
             jerry_release_value(cb_map[id]->this);
         }
-        ZJS_PRINT("zjs_remove_callback_priv %d\n", __LINE__);
         SET_CB_REMOVED(cb_map[id]->flags);
-        ZJS_PRINT("zjs_remove_callback_priv %d\n", __LINE__);
         CB_UNLOCK();
-        ZJS_PRINT("zjs_remove_callback_priv %d\n", __LINE__);
         if (!skip_flush) {
-            ZJS_PRINT("zjs_remove_callback_priv %d\n", __LINE__);
             RB_LOCK();
             int ret = zjs_port_ring_buf_put(&ring_buffer, (u16_t)id,
                                             CB_FLUSH_ONE, NULL, 0);
-                                            ZJS_PRINT("zjs_remove_callback_priv %d\n", __LINE__);
             RB_UNLOCK();
             if (ret) {
-                ZJS_PRINT("zjs_remove_callback_priv FOR ID: %i, - %d\n", id, __LINE__);
                 // couldn't add flush command, so just free now
                 DBG_PRINT("no room for flush callback %d command\n", id);
                 zjs_free_callback(id);
-                ZJS_PRINT("zjs_remove_callback_priv %d\n", __LINE__);
             }
         }
-        ZJS_PRINT("zjs_remove_callback_priv %d\n", __LINE__);
         DBG_PRINT("removing callback id %d\n", id);
-    }
-    else {
-        ZJS_PRINT("zjs_remove_callback_priv FAIL! %d\n", __LINE__);
+    } else {
         CB_UNLOCK();
     }
-    ZJS_PRINT("zjs_remove_callback_priv %d\n", __LINE__);
 }
 
 void zjs_remove_callback(zjs_callback_id id)
@@ -386,18 +365,13 @@ void zjs_remove_callback(zjs_callback_id id)
 void zjs_remove_all_callbacks()
 {
     // try posting a command to flush all removed callbacks
-    ZJS_PRINT("BJONES remove all callbacks %d\n", __LINE__);
     RB_LOCK();
-    ZJS_PRINT("BJONES remove all callbacks %d\n", __LINE__);
     int ret = zjs_port_ring_buf_put(&ring_buffer, 0, CB_FLUSH_ALL, NULL, 0);
-    ZJS_PRINT("BJONES remove all callbacks %d\n", __LINE__);
     RB_UNLOCK();
     bool skip_flush = ret ? false : true;
-    ZJS_PRINT("BJONES remove all callbacks %d skip == %i\n", __LINE__, skip_flush);
     for (int i = 0; i < cb_size; i++) {
         CB_LOCK();
         if (cb_map[i]) {
-            ZJS_PRINT("BJONES removing callback %i\n", i);
             zjs_remove_callback_priv(i, skip_flush);
         }
         CB_UNLOCK();
@@ -416,30 +390,26 @@ void signal_callback_priv(zjs_callback_id id,
                           )
 #endif
 {
-ZJS_PRINT("BJONES signal callback priv %d\n", id);
 #ifdef DEBUG_CALLBACKS
     DBG_PRINT("pushing item to ring buffer. id=%d, args=%p, size=%u\n", id,
               args, size);
 #endif
-    ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
     int in_thread = k_is_preempt_thread();  // versus ISR or co-op thread
+#ifndef ZJS_LINUX_BUILD
     int key = 0;
+#endif
     if (in_thread) CB_LOCK();
     if (id < 0 || id >= cb_size || !cb_map[id]) {
-        DBG_PRINT("callback ID %u does not exist\n", id);
-        ZJS_PRINT("BJONES SCBP DOESN'T EXIST%d\n", __LINE__);
+        DBG_PRINT("callback ID %d does not exist\n", id);
         if (in_thread) CB_UNLOCK();
         return;
     }
-//    ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
     if (GET_CB_REMOVED(cb_map[id]->flags)) {
-        ZJS_PRINT("BJONES SCBP ALREADY REMOVED %d\n", __LINE__);
         DBG_PRINT("callback already removed\n");
         if (in_thread) CB_UNLOCK();
         return;
     }
     if (GET_TYPE(cb_map[id]->flags) == CALLBACK_TYPE_JS) {
-    //    ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
         // for JS, acquire values and release them after servicing callback
         int argc = size / sizeof(jerry_value_t);
         jerry_value_t *values = (jerry_value_t *)args;
@@ -447,38 +417,33 @@ ZJS_PRINT("BJONES signal callback priv %d\n", id);
             jerry_acquire_value(values[i]);
         }
     }
-    //ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
 #ifdef INSTRUMENT_CALLBACKS
     set_info_string(cb_map[id]->caller, file, func);
 #endif
+#ifndef ZJS_LINUX_BUILD
     if (in_thread) {
-    //    ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
         RB_LOCK();
         key = irq_lock();
     }
-    //ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
+#endif
     int ret = zjs_port_ring_buf_put(&ring_buffer,
                                     (u16_t)id,
                                     0,  // we use value for CB_FLUSH_ONE/ALL
                                     (u32_t *)args,
                                     (u8_t)((size + 3) / 4));
-    //ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
     // Need to unlock here or callback may be blocked when it gets called.
     // NOTE: this is a temporary fix, we should implement a lock ID system
     // rather than locking everything, as we are only trying to prevent a
     // callback
     // from being edited and called at the same time.
+#ifndef ZJS_LINUX_BUILD
     if (in_thread) {
-        //ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
         irq_unlock(key);
         RB_UNLOCK();
     }
-#ifndef ZJS_LINUX_BUILD
-    //ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
     zjs_loop_unblock();
 #endif
     if (ret != 0) {
-        //ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
         if (GET_TYPE(cb_map[id]->flags) == CALLBACK_TYPE_JS) {
             // for JS, acquire values and release them after servicing callback
             int argc = size / sizeof(jerry_value_t);
@@ -487,13 +452,11 @@ ZJS_PRINT("BJONES signal callback priv %d\n", id);
                 jerry_release_value(values[i]);
             }
         }
-//ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
+
         zjs_ringbuf_error_count++;
         zjs_ringbuf_last_error = ret;
     }
-    //ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
     if (in_thread) CB_UNLOCK();
-    //ZJS_PRINT("BJONES SCBP %d\n", __LINE__);
 }
 
 zjs_callback_id zjs_add_c_callback(void *handle, zjs_c_callback_func callback)
@@ -531,7 +494,7 @@ void print_callbacks(void)
                 if (jerry_value_is_function(cb_map[i]->js_func)) {
                     ZJS_PRINT("Single Function\n");
                     ZJS_PRINT("\tjs_func: %p\n",
-                            (void *)(uintptr_t)cb_map[i]->js_func);
+                              (void *)(uintptr_t)cb_map[i]->js_func);
                     ZJS_PRINT("\tonce: %u\n", GET_ONCE(cb_map[i]->flags));
                 } else {
                     ZJS_PRINT("js_func is not a function\n");
@@ -664,13 +627,13 @@ u8_t zjs_service_callbacks(void)
                 }
 #ifdef ZJS_PRINT_CALLBACK_STATS
                 if (!header_printed) {
-                    PRINT("\n--------- Callback Stats ------------\n");
+                    ZJS_PRINT("\n--------- Callback Stats ------------\n");
                     header_printed = 1;
                 }
                 if (cb_map[id]) {
-                    PRINT("[cb stats] Callback[%u]: type=%s, arg_sz=%u\n", id,
-                          (cb_map[id]->type == CALLBACK_TYPE_JS) ? "JS" : "C",
-                          size);
+                    ZJS_PRINT("[cb stats] Callback[%u]: type=%s, arg_sz=%u\n", id,
+                              (GET_TYPE(cb_map[id]->flags) == CALLBACK_TYPE_JS) ? "JS" : "C",
+                              size);
                 }
                 num_callbacks++;
 #endif
@@ -681,11 +644,11 @@ u8_t zjs_service_callbacks(void)
         }
 #ifdef ZJS_PRINT_CALLBACK_STATS
         if (num_callbacks) {
-            PRINT("[cb stats] Number of Callbacks (this service): %lu\n",
-                  num_callbacks);
-            PRINT("[cb stats] Max Callbacks Per Service: %u\n",
-                  ZJS_MAX_CB_LOOP_ITERATION);
-            PRINT("------------- End ----------------\n");
+            ZJS_PRINT("[cb stats] Number of Callbacks (this service): %u\n",
+                      num_callbacks);
+            ZJS_PRINT("[cb stats] Max Callbacks Per Service: %u\n",
+                      ZJS_MAX_CB_LOOP_ITERATION);
+            ZJS_PRINT("------------- End ----------------\n");
         }
 #endif
     }
@@ -704,10 +667,10 @@ void zjs_defer_work(zjs_deferred_work callback, const void *buffer, u32_t bytes)
         memcpy(defer->data, buffer, bytes);
     }
 #ifdef DEBUG_CALLBACKS
-    DBG_PRINT("deferring work: %d bytes\ncontents: ", len);
+    DBG_PRINT("full packet: %d bytes\ncontents: ", len);
     int count32 = (len + 3) / 4;
     for (int i = 0; i < count32; ++i) {
-        ZJS_PRINT("0x%x ", ((u32_t *)buf)[i]);
+        ZJS_PRINT("0x%08x ", ((u32_t *)buf)[i]);
     }
     ZJS_PRINT("\nbuffer: ");
     count32 = (bytes + 3) / 4;

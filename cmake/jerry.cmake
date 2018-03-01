@@ -30,11 +30,11 @@ endif()
 set(CMAKE_ARGS
   -B${JERRY_LIBDIR}
   -DCMAKE_BUILD_TYPE=MinSizeRel
-  -DCMAKE_TOOLCHAIN_FILE=${JERRY_BASE}/cmake/toolchain_external.cmake
+  -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+  -DCMAKE_C_COMPILER_WORKS=TRUE
+  -DCMAKE_SYSTEM_NAME=Zephyr
   -DENABLE_ALL_IN_ONE=${ALL_IN_ONE}
   -DENABLE_LTO=OFF
-  -DEXTERNAL_CMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-  -DEXTERNAL_CMAKE_C_COMPILER_ID=GNU
   -DEXTERNAL_COMPILE_FLAGS=${external_project_cflags}
   -DFEATURE_ERROR_MESSAGES=ON
   -DFEATURE_INIT_FINI=ON
@@ -73,11 +73,9 @@ ExternalProject_Add(
   )
 
 add_library(jerry-core STATIC IMPORTED)
-set(JERRY_CORE_LIB ${JERRY_LIBDIR}/lib/libjerry-core.a)
 add_dependencies(jerry-core jerry_project)
-set_target_properties(jerry-core PROPERTIES IMPORTED_LOCATION ${JERRY_CORE_LIB})
+set_target_properties(jerry-core PROPERTIES IMPORTED_LOCATION ${JERRY_LIBDIR}/lib/libjerry-core.a)
 
 add_library(jerry-ext STATIC IMPORTED)
-set(JERRY_EXT_LIB ${JERRY_LIBDIR}/lib/libjerry-ext.a)
 add_dependencies(jerry-ext jerry_project)
-set_target_properties(jerry-ext PROPERTIES IMPORTED_LOCATION ${JERRY_EXT_LIB})
+set_target_properties(jerry-ext PROPERTIES IMPORTED_LOCATION ${JERRY_LIBDIR}/lib/libjerry-ext.a)

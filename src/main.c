@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2017, Intel Corporation.
+// Copyright (c) 2016-2018, Intel Corporation.
 
 // C includes
 #include <string.h>
@@ -13,22 +13,21 @@
 #include <bluetooth/storage.h>
 #include <gatt/ipss.h>
 #include "zjs_net_config.h"
-#endif // CONFIG_NET_L2_BT
-#endif // defined(BUILD_MODULE_BLE) || (CONFIG_NET_L2_BT)
+#endif
+#endif
 #else
 #include "zjs_linux_port.h"
 #endif  // ZJS_LINUX_BUILD
-
 #include "zjs_script.h"
 #include "zjs_util.h"
-#if defined (ZJS_ASHELL) || defined (ZJS_BOOT_CFG)
+#if defined (ZJS_ASHELL) || defined (ZJS_DYNAMIC_LOAD)
 #include <gpio.h>
 #include "zjs_board.h"
+#include "file-utils.h"
 #ifdef ZJS_ASHELL
 #include "ashell/ashell.h"
 #endif // ZJS_ASHELL
-#include "ashell/file-utils.h"
-#endif // defined (ZJS_ASHELL) || defined (ZJS_BOOT_CFG)
+#endif // defined (ZJS_ASHELL) || defined (ZJS_DYNAMIC_LOAD)
 
 // JerryScript includes
 #include "jerryscript.h"
@@ -65,19 +64,16 @@ const size_t snapshot_len = sizeof(snapshot_bytecode);
 const char script_jscode[] = {
 #include "zjs_script_gen.h"
 };
-#endif // ZJS_SNAPSHOT_BUILD
+#endif
 
-bool boot_cfg = false;
-int count = 0;
-bool clear = false;
 #ifdef ZJS_ASHELL
 static bool ashell_mode = false;
-#endif // ZJS_ASHELL
+#endif
 
 #ifdef ZJS_DEBUGGER
 static bool start_debug_server = false;
 static uint16_t debug_port = 5001;
-#endif // ZJS_DEBUGGER
+#endif
 
 #ifdef ZJS_LINUX_BUILD
 // enabled if --noexit is passed to jslinux
@@ -100,7 +96,7 @@ u8_t process_cmd_line(int argc, char *argv[])
 #else
             ERR_PRINT("Debugger disabled, rebuild with DEBUGGER=on");
             return 0;
-#endif // ZJS_DEBUGGER
+#endif
         } else if (!strncmp(argv[i], "--noexit", 8)) {
             no_exit = 1;
         } else if (!strncmp(argv[i], "-t", 2)) {
@@ -123,9 +119,9 @@ u8_t process_cmd_line(int argc, char *argv[])
 #ifndef CONFIG_NET_APP_AUTO_INIT
 #ifdef BUILD_MODULE_BLE
 extern void ble_bt_ready(int err);
-#endif // BUILD_MODULE_BLE
-#endif // CONFIG_NET_APP_AUTO_INIT
-#endif // ZJS_LINUX_BUILD
+#endif
+#endif
+#endif
 
 #ifdef ZJS_ASHELL
 static bool config_mode_detected()
@@ -167,35 +163,40 @@ static bool config_mode_detected()
     // always enter IDE mode when IDE_GPIO_PIN is not specified
     DBG_PRINT("IDE_GPIO_PIN not set\n");
     return true;
-#endif // IDE_GPIO_PIN
+#endif
 }
-#endif // ZJS_ASHELL
+#endif
 
 #ifndef ZJS_LINUX_BUILD
 void main(void)
 #else
 int main(int argc, char *argv[])
-#endif // ZJS_LINUX_BUILD
+#endif
 {
 #ifndef ZJS_SNAPSHOT_BUILD
     char *file_name = NULL;
     size_t file_name_len = 0;
 #ifdef ZJS_LINUX_BUILD
     char *script = NULL;
+    if (argc < 2) {
+        ZJS_PRINT("usage: jslinux [--unittests] [path/to/file.js]\n");
+        return 1;
+    }
+
     file_name = argv[1];
     file_name_len = strlen(argv[1]);
-#elif defined ZJS_ASHELL || defined ZJS_BOOT_CFG
+#elif defined ZJS_ASHELL || defined ZJS_DYNAMIC_LOAD
     char *script = NULL;
 #else
     const char *script = NULL;
-#endif // ZJS_LINUX_BUILD
+#endif
     jerry_value_t code_eval;
     u32_t script_len = 0;
-#endif  // ZJS_SNAPSHOT_BUILD   //BJONES this is the issue, I have snapshot defined.  Do I want it defined?
+#endif
 #ifndef ZJS_LINUX_BUILD
     DBG_PRINT("Main Thread ID: %p\n", (void *)k_current_get());
     zjs_loop_init();
-#endif // !ZJS_LINUX_BUILD
+#endif
     jerry_value_t result;
 
     // print newline here to make it easier to find
@@ -208,48 +209,43 @@ int main(int argc, char *argv[])
 
 #ifdef BUILD_MODULE_OCF
     zjs_register_service_routine(NULL, main_poll_routine);
-#endif // BUILD_MODULE_OCF
+#endif
 
-//BJONES need to change this to work for both ashell and demo
-#if defined(ZJS_ASHELL) || defined(ZJS_BOOT_CFG)
-//#ifdef ZJS_ASHELL
-//if (config_mode_detected()) {
-    // go into IDE mode if connected GPIO button is pressed
-    //ashell_mode = true; //BJONES
-//} else {
-    // boot to cfg file if found
-
-    char filename[MAX_FILENAME_SIZE];
-    if (fs_get_boot_cfg_filename(NULL, filename) == 0) {
-        // read JS stored in filesystem
-        fs_file_t *js_file = fs_open_alloc(filename, "r");
-        if (!js_file) {
-            ZJS_PRINT("\nFile %s not found on filesystem, \
-                      please boot into IDE mode, exiting!\n",
-                      filename);
-            goto error;
-        }
-        script_len = fs_size(js_file);
-        script = zjs_malloc(script_len + 1);
-        ssize_t count = fs_read(js_file, script, script_len);
-        if (script_len != count) {
-            ZJS_PRINT("\nfailed to read JS file\n");
-            zjs_free(script);
-            goto error;
-        }
-        script[script_len] = '\0';
-        ZJS_PRINT("JS boot config found, booting JS %s...\n\n\n", filename);
-        boot_cfg = true;
+#ifdef ZJS_ASHELL
+    if (config_mode_detected()) {
+        // go into IDE mode if connected GPIO button is pressed
+        ashell_mode = true;
     } else {
-        // boot cfg file not found
-        ZJS_PRINT("\nNo boot cfg, continuing...\n");
-        //goto error;
+        // boot to cfg file if found
+        char filename[MAX_FILENAME_SIZE];
+        if (fs_get_boot_cfg_filename(NULL, filename) == 0) {
+            // read JS stored in filesystem
+            fs_file_t *js_file = fs_open_alloc(filename, "r");
+            if (!js_file) {
+                ZJS_PRINT("\nFile %s not found on filesystem, \
+                          please boot into IDE mode, exiting!\n",
+                          filename);
+                goto error;
+            }
+            script_len = fs_size(js_file);
+            script = zjs_malloc(script_len + 1);
+            ssize_t count = fs_read(js_file, script, script_len);
+            if (script_len != count) {
+                ZJS_PRINT("\nfailed to read JS file\n");
+                zjs_free(script);
+                goto error;
+            }
+            script[script_len] = '\0';
+            ZJS_PRINT("JS boot config found, booting JS %s...\n\n\n", filename);
+        } else {
+            // boot cfg file not found
+            ZJS_PRINT("\nNo JS found, please boot into IDE mode, exiting!\n");
+            goto error;
+        }
     }
-//} BJONES
-#endif //  ZJS_ASHELL || ZJS_BOOT_CFG
-ZJS_PRINT("BJONES CHECK 1\n");
+#endif
+
 #ifndef ZJS_SNAPSHOT_BUILD
-ZJS_PRINT("BJONES CHECK 2\n");
 #ifdef ZJS_LINUX_BUILD
     if (argc > 1) {
         if (process_cmd_line(argc - 1, argv + 1) == 0) {
@@ -262,23 +258,18 @@ ZJS_PRINT("BJONES CHECK 2\n");
         }
     } else
     // slightly tricky: reuse next section as else clause
-#endif // ZJS_LINUX_BUILD
+#endif
     {
 #ifdef ZJS_LINUX_BUILD
         script = zjs_malloc(script_len + 1);
         memcpy(script, script_jscode, script_len);
         script[script_len] = '\0';
 #else
-#ifndef ZJS_ASHELL  //BJONES check if I need to exclude this for boot, basically I don't want to run the JS built in if there is a boot_cfg
-        if (!boot_cfg) {
-            ZJS_PRINT("BJONES CHECK 3\n");
-
-            script_len = strnlen(script_jscode, MAX_SCRIPT_SIZE);
-            script = script_jscode;
-        }
+#ifndef ZJS_ASHELL
+        script_len = strnlen(script_jscode, MAX_SCRIPT_SIZE);
+        script = script_jscode;
 #endif
 #endif
-    ZJS_PRINT("BJONES CHECK 4\n");
         if (script_len == MAX_SCRIPT_SIZE) {
             ERR_PRINT("Script size too large! Increase MAX_SCRIPT_SIZE.\n");
             goto error;
@@ -287,13 +278,12 @@ ZJS_PRINT("BJONES CHECK 2\n");
 #endif
 
 #ifdef ZJS_DEBUGGER
-if (start_debug_server) {
-    jerry_debugger_init(debug_port);
-}
+    if (start_debug_server) {
+        jerry_debugger_init(debug_port);
+    }
 #endif
 
 #ifndef ZJS_SNAPSHOT_BUILD
-//    ZJS_PRINT("BJONES parsing file %s\n", file_name);
     code_eval = jerry_parse_named_resource((jerry_char_t *)file_name,
                                            file_name_len,
                                            (jerry_char_t *)script,
@@ -317,16 +307,15 @@ if (start_debug_server) {
 #ifdef ZJS_DEBUGGER
     ZJS_PRINT("Debugger mode: connect using jerry-client-ws.py\n");
 #endif
-    ZJS_PRINT("BJONES bout to jerry_ru\n");
     result = jerry_run(code_eval);
 #endif
-/*
+
     if (jerry_value_has_error_flag(result)) {
         DBG_PRINT("Error running JS\n");
         zjs_print_error_message(result, ZJS_UNDEFINED);
         goto error;
     }
-*/
+
 #ifndef ZJS_LINUX_BUILD
 #ifndef ZJS_ASHELL  // Ashell will call bt_enable when module is loaded
 
@@ -338,8 +327,8 @@ if (start_debug_server) {
     err = bt_enable(NULL);
 #endif
     if (err) {
-       ERR_PRINT("Failed to enable Bluetooth, error %d\n", err);
-       goto error;
+        ERR_PRINT("Failed to enable Bluetooth, error %d\n", err);
+        goto error;
     }
 #endif
 
@@ -354,7 +343,6 @@ if (start_debug_server) {
     // NOTE: don't use ZVAL on these because we want to release them early, so
     //   they don't stick around for the lifetime of the app
 #ifndef ZJS_SNAPSHOT_BUILD
-    ZJS_PRINT("BJONES CODE EVAL RELEASED!\n");
     jerry_release_value(code_eval);
 #endif
 
@@ -370,34 +358,27 @@ if (start_debug_server) {
     }
 #endif
     while (1) {
-
-        //ZJS_PRINT("BJONES CHECK 5\n");
-#ifdef ZJS_BOOT_CFG
-        zjs_modules_check_load_file();
+#ifdef ZJS_DYNAMIC_LOAD
+	// Check if we should load a new JS file
+    zjs_modules_check_load_file();
 #endif
 #ifdef ZJS_ASHELL
         if (ashell_mode) {
             zjs_ashell_process();
         }
 #endif
-        //BJONES TODO this works to keep things going. Why is it being set to FOREVER?
-        //Is this to keep ashell working well? i.e. not do anything until ASHELL requests something?
         s32_t wait_time = ZJS_TICKS_FOREVER;
         u8_t serviced = 0;
-        //ZJS_PRINT("LOOP\n");
 
         // callback cannot return a wait time
-        //ZJS_PRINT("BJONES loop %d\n", __LINE__);
         if (zjs_service_callbacks()) {
-            //ZJS_PRINT("BJONES loop %d\n", __LINE__);
             // when this was only called at the end, if a callback created a
             //   timer, it would think there were no timers and block forever
             // FIXME: need to consider the chicken and egg problems here
             serviced = 1;
         }
-        //ZJS_PRINT("BJONES loop %d\n", __LINE__);
 #ifdef ZJS_LINUX_BUILD
-	// FIXME - reverted patch #1542 to old timer implementation
+        // FIXME - reverted patch #1542 to old timer implementation
         u64_t wait = zjs_timers_process_events();
         if (wait != ZJS_TICKS_FOREVER) {
             serviced = 1;
@@ -405,41 +386,31 @@ if (start_debug_server) {
         }
         wait = zjs_service_routines();
 #else
-//ZJS_PRINT("BJONES loop %d\n", __LINE__);
         u64_t wait = zjs_service_routines();
 #endif
-//ZJS_PRINT("BJONES loop %d\n", __LINE__);
         if (wait != ZJS_TICKS_FOREVER) {
-            //ZJS_PRINT("BJONES loop %d\n", __LINE__);
             serviced = 1;
             wait_time = (wait < wait_time) ? wait : wait_time;
         }
         // callback cannot return a wait time
         if (zjs_service_callbacks()) {
-            //ZJS_PRINT("BJONES loop %d\n", __LINE__);
             serviced = 1;
         }
-//ZJS_PRINT("BJONES loop %d\n", __LINE__);
+
 #ifdef BUILD_MODULE_PROMISE
-    ZJS_PRINT("INSIDE BUILD_MODULE_PROMISE\n");
         // run queued jobs for promises
         result = jerry_run_all_enqueued_jobs();
-        if (jerry_value_has_error_flag(result))
-        {
-            ZJS_PRINT("BJONES ERROR IN MAIN LOOP\n");
+        if (jerry_value_has_error_flag(result)) {
             DBG_PRINT("Error running JS in promise jobqueue\n");
             zjs_print_error_message(result, ZJS_UNDEFINED);
             goto error;
         }
 #endif
-//ZJS_PRINT("BJONES loop %d\n", __LINE__);
+
 #ifndef ZJS_LINUX_BUILD
-//ZJS_PRINT("BJONES loop %d\n", __LINE__);
         zjs_loop_block(wait_time);
 #endif
-//ZJS_PRINT("BJONES loop %d\n", __LINE__);
 #ifdef ZJS_LINUX_BUILD
-//ZJS_PRINT("BJONES loop %d\n", __LINE__);
         if (!no_exit) {
             // if the last and current loop had no pending "events" (timers or
             // callbacks) and --autoexit is enabled the program will terminate
@@ -464,21 +435,8 @@ if (start_debug_server) {
         }
         last_serviced = serviced;
 #endif
-//ZJS_PRINT("BJONES loop %d\n", __LINE__);
-    if (count % 50000 == 0)
-        ZJS_PRINT("BJONES done with loop...%i\n",count);
-    count++;
-    // if (!clear && count > 150000) {
-    //     ZJS_PRINT("stoppING..\n");
-    //     //zjs_stop_js();
-    //     zjs_BJRUN("3.js");
-    //     clear = true;
-    // }
     }
-
 error:
-ZJS_PRINT("BJONES error hit in main loop returning\n");
-zjs_loop_block(ZJS_TICKS_FOREVER);
 #ifdef ZJS_LINUX_BUILD
     return 1;
 #else

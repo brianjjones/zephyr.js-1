@@ -43,12 +43,17 @@ below instructions to connect to the device from the browser IDE directly.
 * Start Google Chrome 59 or later on the host PC.
 
 * **On Ubuntu and Fedora:**
-1. Create udev rules to allow Chrome to open the WebUSB enabled device and
-   also prevent ModemManager interfering with that device by adding the following
-   lines in /etc/udev/rules.d/99-arduino-101.rules
+1. Create udev rules to allow Chrome to open the WebUSB enabled devices and
+   also prevent ModemManager interfering with those devices by adding the following
+   lines in /etc/udev/rules.d/99-webusb.rules
 
+* **Arduino 101**
 >     SUBSYSTEM=="tty", ENV{ID_VENDOR_ID}=="8086", ENV{ID_MODEL_ID}=="f8a1", MODE="0666", ENV{ID_MM_DEVICE_IGNORE}="1", ENV{ID_MM_CANDIDATE}="0"
 >     SUBSYSTEM=="usb", ATTR{idVendor}=="8086", ATTR{idProduct}=="f8a1", MODE="0666" ENV{ID_MM_DEVICE_IGNORE}="1"
+
+* **Default VID/PID**
+>     SUBSYSTEM=="tty", ENV{ID_VENDOR_ID}=="dead", ENV{ID_MODEL_ID}=="beef", MODE="0666", ENV{ID_MM_DEVICE_IGNORE}="1", ENV{ID_MM_CANDIDATE}="0"
+>     SUBSYSTEM=="usb", ATTR{idVendor}=="dead", ATTR{idProduct}=="beef", MODE="0666" ENV{ID_MM_DEVICE_IGNORE}="1"
 
 2. Then run this command:
     ```bash
@@ -56,7 +61,7 @@ below instructions to connect to the device from the browser IDE directly.
     ```
 3. Connect the device to the host PC using a USB cable.
 4. A notification from Chrome will appear with an URL of the IDE. If not, the
-   address for the IDE is https://01.org/iot-ide.
+   address for the IDE is https://intel.github.io/zephyrjs-ide/.
 5. Click on the notification to open IDE in the browser.
 6. Click on connect button and grant an access to the device.
 7. Try uploading JS code to the device.
@@ -65,7 +70,7 @@ below instructions to connect to the device from the browser IDE directly.
 
     The landing page detection is disabled on Windows on Chrome so you don't see a
     notification in the upper right corner when the device is connected to the host,
-    but the WebUSB will continue to work. Visit the [IDE](https://01.org/iot-ide)
+    but the WebUSB will continue to work. Visit the [IDE](https://intel.github.io/zephyrjs-ide/)
     site and click on connect.
 
 Commands
