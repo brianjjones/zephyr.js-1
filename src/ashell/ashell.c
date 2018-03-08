@@ -1,5 +1,5 @@
 // Copyright (c) 2017, Intel Corporation.
-#define ASHELL_IDE_DBG 1
+
 /**
  * @file
  * @brief Ashell main.

@@ -25,7 +25,7 @@
 
 // Local includes
 #include "ashell.h"
-#include "file-utils.h"
+#include "../zjs_file_utils.h"
 #include "jerryscript-port.h"
 #include "ide-comms.h"
 
@@ -427,11 +427,6 @@ static void ide_cmd_init(char *buf, size_t len)
 
 static inline bool test_stream_end(char *buf, size_t len, size_t offset)
 {
-    for (int i = 10; i > 0; i--) {
-        if (match_stream_end(buf + len - i - offset)){
-            ide_spool("###### BJONES found #\n");
-        }
-    }
     return match_stream_end(buf + len - 2 - offset) &&
            match_postamble(buf + len - 1 - offset);
 }
@@ -440,8 +435,6 @@ static inline bool test_stream_end(char *buf, size_t len, size_t offset)
 // May be invoked multiple times. Leaves file open until end of stream received.
 int save_stream(char *filename, char *buffer, size_t len)
 {
-    //ide_spool("BJONES IN SAVE STREAM!\n");
-
     int ret = NO_ERROR;
     bool end = false;
 
@@ -451,9 +444,6 @@ int save_stream(char *filename, char *buffer, size_t len)
         if (!match_stream_start(buffer)) {
             return ide_reply(ERROR_INVALID_STREAM, "\"Invalid stream start.\"");
         }
-        // BJONES what is u mode? Also is there really an instance where we wouldn't save the whole thing?
-        // Seems too hard to figure out where the changes would go, otherwise all this would do is append the end.
-        //parser.stream_fp = fs_open_alloc(filename, fs_exist(filename) ? "u" : "w+");
         parser.stream_fp = fs_open_alloc(filename, "w+");
         skip_stream_start(&buffer, &len);
     }
@@ -464,12 +454,8 @@ int save_stream(char *filename, char *buffer, size_t len)
 
     // The IDE client will always terminate with '#}\n' sequence.
     if(test_stream_end(buffer, len, 0)) {
-        ide_spool("DONE!!!!!!!!!! BJONES got #}\n");
         len -= 2;  // TODO: use stream_end_size() + postamble_size()
         end = true;
-    }
-    else {
-        ide_spool("BJONES not the end %s\n", buffer);
     }
 
     if (len > 0) {
@@ -498,25 +484,20 @@ static void ide_cmd_save(char *buf, size_t len)
     int ret = 0;
     char *filename = NULL;
     IDE_DBG("\r\nInvoking save...");
-    //BJONES TODO: why does this sit here when I send the last #}? Try sending a random string and see if it still does
-    ide_spool("BJONES in ide_cmd_save (%i) : %s\n", parser.state, buf);
+
     switch (parser.state) {
         case PARSE_ARG_FILENAME:
-        ide_spool("BJONES in ide_cmd_save PARSE_ARG_FILENAME : %s\n", buf);
             filename = buf;
             ret = parse_filename(buf, len, 1);  // file name is arg 1
             if (ret < 0) {
-                ide_spool("BJONES BAILING!\n");
                 return;
             }
             skip_size(&buf, &len, ret);
             // fall through
         case PARSE_ARG_STREAM:  // subsequent invocations fall here
-        ide_spool("BJONES in ide_cmd_save PARSE_ARG_STREAM : %s\n", buf);
             save_stream(filename, buf, len);
             return;
         default:
-        ide_spool("BJONES in ide_cmd_save default\n");
             ide_reply(ERROR_GENERIC, "\"Parser error.\"");
             return;
     }
