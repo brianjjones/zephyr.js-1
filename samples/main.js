@@ -9,8 +9,6 @@
 
 var LCD = require("ST7735.js");
 var aio = require("aio");
-//var fs = require('fs');
-// Color definitions
 var BLACK =  [0x00, 0x00];
 var BLUE  =  [0x00, 0x1F];
 var RED   =  [0xF8, 0x00];
@@ -51,7 +49,7 @@ try {
 //*************************************************************************
 
 var pin3 = gpio.open({pin: '3', mode: 'in', edge: 'rising'});
-// var pin2 = gpio.open({pin: '12', mode: 'in', edge: 'rising'});
+var pin2 = gpio.open({pin: '2', mode: 'in', edge: 'rising'});
 var pin5 = gpio.open({pin: '5', mode: 'in', edge: 'rising'});
 var pinX = aio.open({ pin: 'A0' });
 var pinY = aio.open({ pin: 'A1' });
@@ -61,18 +59,14 @@ pin3.onchange = function(event) {
     runJS("1.js");
 };
 
-// pin2.onchange = function(event) {
-//     console.log("Starting 2.js...");
-//     setBootCfg("2.js");
-//     reset();
-// };
+pin2.onchange = function(event) {
+    console.log("Starting 2.js...");
+    runJS("2.js");
+};
 
 pin5.onchange = function(event) {
-    //stopJS();
     console.log("Starting 3.js...");
     runJS("3.js");
-    //setBootCfg("3.js");
-    //reset();
 };
 
 setInterval(function () {
@@ -98,8 +92,7 @@ setInterval(function () {
     else {
         valueY = lastY;
     }
-//pinX.read();
-    //console.log("X val is " + valueX);
+
     var color = lastColor == RED ? GREEN : RED;
     lastColor = color;
 

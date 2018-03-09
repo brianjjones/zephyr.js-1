@@ -434,16 +434,7 @@ int zjs_require_string_if_prop_map(jerry_value_t obj, const char *prop,
 void free_handle_nop(void *h);
 
 #ifndef ZJS_LINUX_BUILD
-#if !defined (ZJS_ASHELL) && !defined (ZJS_BOOT_CFG)
-//BJONES
-
-/*
-jerry_value_t name(const jerry_value_t function_obj,                     \
-                   const jerry_value_t this, const jerry_value_t argv[], \
-                   const jerry_length_t argc)
-
-jerry_value_t zjs_set_boot_cfg(const char *filename);    //BJONES TODO make this bool and return false if the file isn't on the FS
-*/
+#ifndef ZJS_ASHELL
 /*
  * Unblock the main loop
  */
@@ -458,7 +449,6 @@ void zjs_loop_block(int time);
  * Initialize the main loop blocking semaphore
  */
 void zjs_loop_init(void);
-void zjs_loop_reset(void);
 #else
 #define zjs_loop_unblock() do {} while(0)
 #define zjs_loop_block(time) do {} while(0)
@@ -466,9 +456,6 @@ void zjs_loop_reset(void);
 #endif
 #endif
 
-#ifdef ZJS_BOOT_CFG
-void zjs_reboot();  // Reboots the device
-#endif
 // Type definition to be used with macros below
 // struct list_item {
 //     int value;

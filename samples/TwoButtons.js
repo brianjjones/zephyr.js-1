@@ -13,18 +13,20 @@ console.log('GPIO test with two buttons controlling two LEDs...');
 var gpio = require('gpio');
 
 // LED1 and LED2 are onboard LEDs on Arduino 101
-var led1 = gpio.open({pin: 'LED1', activeLow: true});
-var led2 = gpio.open({pin: 'LED2', activeLow: false});
-var btn1 = gpio.open({pin: 2, mode: 'in', edge: 'any'});
-var btn2 = gpio.open({pin: 4, mode: 'in', edge: 'any'});
+// var led1 = gpio.open({pin: 'LED1', activeLow: true});
+// var led2 = gpio.open({pin: 'LED2', activeLow: false});
+var btn1 = gpio.open({pin: 2, mode: 'in', edge: 'falling'});
+var btn2 = gpio.open({pin: 3, mode: 'in', edge: 'rising'});
 
 // turn off LED #2 initially
-led1.write(0);
+// led1.write(0);
 
 btn1.onchange = function (event) {
-    led1.write(event.value);
+    console.log("BUTTON 2 + " + btn1.read());
+//    led1.write(event.value);
 };
 
 btn2.onchange = function (event) {
-    led2.write(event.value);
+    console.log("BUTTON 3 + " + btn2.read());
+//    led2.write(event.value);
 };

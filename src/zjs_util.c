@@ -7,27 +7,12 @@
 #include "zjs_buffer.h"
 #include "zjs_common.h"
 #include "zjs_util.h"
-#include <misc/reboot.h>
 #ifndef ZJS_LINUX_BUILD
 #include "zjs_zephyr_port.h"
 #endif
 #ifdef ZJS_TRACE_MALLOC
 #define MAX_LIST_SIZE 300
 mem_stats_t mem_array[MAX_LIST_SIZE];
-#endif
-
-#ifdef ZJS_BOOT_CFG
-#ifdef CONFIG_BOARD_ARDUINO_101
-#include <qm_init.h>
-#include <flash.h>
-#endif
-#include "jerryscript-port.h"
-#include <atomic.h>
-#include <misc/printk.h>
-#include <misc/reboot.h>
-#include <zephyr/types.h>
-#include "ashell/file-utils.h"
-//const char *BUILD_TIMESTAMP = __DATE__ " " __TIME__ "\n";
 #endif
 
 void *zjs_malloc_with_retry(size_t size)
@@ -807,18 +792,15 @@ bool zjs_str_matches(char *str, char *array[])
 }
 
 #ifndef ZJS_LINUX_BUILD
-#if !defined (ZJS_ASHELL) && !defined (ZJS_BOOT_CFG)
+#ifndef ZJS_ASHELL
 static zjs_port_sem block;
-
 void zjs_loop_unblock(void)
 {
-    ZJS_PRINT("BJONES unblock called\n");
     zjs_port_sem_give(&block);
 }
 
 void zjs_loop_block(int time)
 {
-    ZJS_PRINT("BJONES BLOCK called %i\n", time);
     zjs_port_sem_take(&block, time);
 }
 
@@ -826,53 +808,8 @@ void zjs_loop_init(void)
 {
     zjs_port_sem_init(&block, 0, 1);
 }
-void zjs_loop_reset(void)
-{
-    k_sem_reset(&block);
-}
 #endif
 #endif
-
-#ifdef ZJS_BOOT_CFG
-void zjs_reboot()
-{
-    ZJS_PRINT("BJONES restarting...\n");
-    #ifdef CONFIG_BOARD_ARDUINO_101
-        QM_SCSS_PMU->rstc |= QM_COLD_RESET;
-    #endif
-    sys_reboot(SYS_REBOOT_COLD);
-}
-/*
-static ZJS_DECL_FUNC(zjs_set_boot_cfg) // BJONES (const char *filename)
-{
-    ZJS_VALIDATE_ARGS(Z_STRING);
-    jerry_size_t file_len = 15;
-    char file_str[file_len];
-    zjs_copy_jstring(argv[0], file_str, &file_len);
-    char blah[10] = "test";
-    ZJS_PRINT("BJONES zjs_set_boot_cfg received %s as the file nam, %s\n", file_str, blah);
-    if (file_str == NULL)
-        ZJS_PRINT("NULL!!!!!!!!\n");
-    if (!fs_exist(file_str)) {
-        ZJS_PRINT("%s doesn't exist\n\r\n", file_str);
-        return;
-    }
-
-    fs_file_t *file = fs_open_alloc("boot.cfg", "w+");
-    if (!file) {
-        ZJS_PRINT("Failed to create boot.cfg file\r\n");
-        return;
-    }
-
-    ssize_t written = fs_write(file, BUILD_TIMESTAMP, strlen(BUILD_TIMESTAMP));
-    written += fs_write(file, file_str, strlen(file_str));
-    if (written <= 0) {
-        ZJS_PRINT("Failed to write boot.cfg file\r\n");
-    }
-
-    fs_close_alloc(file);
-}*/
-#endif // ZJS_BOOT_CFG
 
 #ifdef DEBUG_BUILD
 void dump_buffer(const char *label, const void *buf, int len)
