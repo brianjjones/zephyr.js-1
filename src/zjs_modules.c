@@ -49,6 +49,7 @@ struct routine_map svc_routine_map[NUM_SERVICE_ROUTINES];
 static bool javascript_eval_code(const char *source_buffer, ssize_t size,
                                  jerry_value_t *ret_val)
 {
+    ZJS_PRINT("Attempting to eval code, size %i\n", size);
     (*ret_val) = jerry_eval((jerry_char_t *)source_buffer, size, false);
     if (jerry_value_has_error_flag(*ret_val)) {
         ERR_PRINT("failed to evaluate JS\n");
@@ -64,9 +65,11 @@ static bool load_js_module_fs(const jerry_value_t module_name,
 {
     // Currently searching the filesystem is only supported on arduino 101
 #if defined(ZJS_ASHELL) || defined(ZJS_DYNAMIC_LOAD)
+
     jerry_size_t module_size = jerry_get_utf8_string_size(module_name) + 1;
     char module[module_size];
     zjs_copy_jstring(module_name, module, &module_size);
+    ZJS_PRINT("IN load_js_module_fs %s\n", module);
     ssize_t file_size = 0;
 
     // Attempt to read the file from the filesystem.
@@ -134,7 +137,7 @@ static bool load_js_module_obj(const jerry_value_t module_name,
 
     // Get the module name
     zjs_copy_jstring(module_name, module, &module_size);
-
+	ZJS_PRINT("Trying to load JS module %s\n" , module);
     // Get the list of currently loaded modules
     ZVAL global_obj = jerry_get_global_object();
     ZVAL modules_obj = zjs_get_property(global_obj, "module");
@@ -158,8 +161,10 @@ static bool load_js_module_obj(const jerry_value_t module_name,
 
     (*result) = zjs_get_property(exports_obj, mod_trim);
     if (!jerry_value_is_object(*result)) {
+	ZJS_PRINT("FAILED TO FIND JS\n");
         return false;
     }
+    ZJS_PRINT("FOUND JS\n");
     return true;
 }
 
@@ -203,7 +208,7 @@ static ZJS_DECL_FUNC(native_require_handler)
     // Try each of the resolvers to see if we can find the requested module
     jerry_value_t result = jerryx_module_resolve(argv[0], resolvers, 3);
     if (jerry_value_has_error_flag(result)) {
-        DBG_PRINT("Couldn't load module %s\n", module);
+        ZJS_PRINT("Couldn't load module %s\n", module);
         return NOTSUPPORTED_ERROR("Module not found");
     } else {
         DBG_PRINT("Module %s loaded\n", module);

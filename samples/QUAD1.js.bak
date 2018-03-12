@@ -1,0 +1,39 @@
+function QUAD1() {
+    var quad1API = {};
+    console.log("QUAD1 1 loaded");
+    quad1API.init  = function (screen, x, y, w, h) {
+        this.screen = screen;
+        this.x = x;
+        this.y = y;
+        this.width = w;
+        this.height = h;
+        this.screen.fillRect(this.x, this.y, this.width, this.height, GREEN);
+        this.pin = aio.open({ pin: 'A2' });
+        this.checkTemp(); //Get the initial reading.
+        this.pin.on('change', this.checkTemp.bind(this));
+        //this.intervalID = setInterval(this.checkTemp.bind(this), 1000);
+        console.log("QUAD1 3 + " + this.pin.read());
+    }
+
+    quad1API.checkTemp = function()
+    {
+        var rawValue = this.pin.read();
+        if (rawValue == 0) {
+            console.log("Invalid temperature value");
+        //    return 0;
+        } else {
+            var voltage = (rawValue * 3.3) / 1024;
+            var celsius = (voltage - 0.5) * 10;
+            console.log(celsius + " : " + rawValue + " : ");
+            celsius = celsius | 0;
+            console.log(celsius + "C");
+            this.screen.fillRect(this.x, this.height / 3, this.width,
+                                 this.height / 3, GREEN);
+            this.screen.drawString(this.width / 5, this.height / 5,  celsius +
+                                   "C" , BLUE, 2);
+        }
+    }
+
+    return quad1API;
+}
+module.exports.QUAD1 = new QUAD1();

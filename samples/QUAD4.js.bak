@@ -1,0 +1,14 @@
+function QUAD4() {
+    var quad4API = {};
+    quad4API.init  = function (screen, x, y, w, h) {
+        this.screen = screen;
+        this.x = x;
+        this.y = y;
+        this.width = w;
+        this.height = h;
+        this.screen.fillRect(this.x, this.y, this.width, this.height, CYAN);
+    }
+    return quad4API;
+}
+module.exports.QUAD4 = new QUAD4();
+console.log("QUAD4 loaded");
