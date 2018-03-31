@@ -120,6 +120,15 @@ void parser_init()
     parser_reset();
 }
 
+void ide_ack()
+{
+    printk("*** BJONES ACK CALLED!\n");
+    // Currently only save messages use the ack since they are multi line
+    // TODO send the number of messages you'd like to receive in this ACK
+    if (parser.cmd_id == CMD_SAVE) {
+        ide_reply(NO_ERROR, "\"ACK\"");
+    }
+}
 
 /* ************************* IDE protocol syntax *************************** */
 
@@ -257,9 +266,6 @@ int ide_end_message(int status)
     return ide_spool_flush();
 }
 
-#define IDE_DBG(...)  do { ; } while (0)
-
-/* BJONES
 #ifdef ASHELL_IDE_DBG
 #define IDE_DBG(...) do { \
     ide_spool( __VA_ARGS__ ); \
@@ -268,7 +274,7 @@ int ide_end_message(int status)
 #else
 #define IDE_DBG(...)  do { ; } while (0)
 #endif
-*/
+
 /* ***************************** Parsing *********************************** */
 
 // Match input to supported commands.
@@ -283,7 +289,7 @@ static int parse_command(char *buf, size_t len)
 {
     size_t size, id;
     char cmd_buf[CMD_MAX_LEN + 1];
-    printk("BJONES parce_command\n");
+    //printk("BJONES parce_command\n");
     IDE_DBG("\r\nParsing command.");
     for (size = 0; len > 0 && size <= CMD_MAX_LEN; len--) {
         if(match_separator(buf) || match_postamble(buf)) {
@@ -321,7 +327,7 @@ static int check_argc(size_t argc, char *buf, size_t len)
 // Process a buffer received from WebUSB.
 // Reentrant: may be called multiple times until a full message is received.
 void ide_parse(char *buf, size_t len) {
-    printk("BJONES ide_parse, state is %i\n", parser.state);
+    //printk("BJONES ide_parse, state is %i\n", parser.state);
     IDE_DBG("\r\nEntering ide_parse...");
 
     if (len == 0 || buf == NULL) {
@@ -338,7 +344,7 @@ void ide_parse(char *buf, size_t len) {
     // handle idle and stream states as possible entry points.
     switch (parser.state) {
         case PARSER_IDLE:  // entry point
-            printk("BJONES Parser state: idle.\n");
+            //printk("BJONES Parser state: idle.\n");
             for(; len > 0 && !match_preamble(buf); len--, buf++);
 
             if (len == 0) {
@@ -348,13 +354,13 @@ void ide_parse(char *buf, size_t len) {
             skip_preamble(&buf, &len);
 
             parser.state = PARSE_CMD;  // doesn't need explicit entry point
-            printk("BJONES Parser state: cmd.\n");
+            //printk("BJONES Parser state: cmd.\n");
             if ((ret = parse_command(buf, len)) < 0) {
                 return;  // errors already reported and parser already reset
             }
             skip_size(&buf, &len, ret);
 
-            printk("BJONES Parser state: arg(s).\n");
+            //printk("BJONES Parser state: arg(s).\n");
             size_t argc = cmd_arg_map[parser.cmd_id].argc;
             if (argc == 0) {
                 parser.state = PARSE_ARG_NONE;
@@ -371,7 +377,7 @@ void ide_parse(char *buf, size_t len) {
         case PARSE_ARG_FILENAME:
         case PARSE_ARG_STREAM:    // re-entry point
             // Since args can be streams, further parsing is done in handlers.
-            printk("BJONES Dispatching command..\n.");
+            //printk("BJONES Dispatching command..\n.");
             cmd_arg_map[parser.cmd_id].handler(buf, len);
         default:
             return;
@@ -440,7 +446,7 @@ static inline bool test_stream_end(char *buf, size_t len, size_t offset)
 // May be invoked multiple times. Leaves file open until end of stream received.
 int save_stream(char *filename, char *buffer, size_t len)
 {
-    printk("BJONES save_stream START\n");
+    //printk("BJONES save_stream START\n");
     int ret = NO_ERROR;
     bool end = false;
 
@@ -462,7 +468,7 @@ int save_stream(char *filename, char *buffer, size_t len)
     if(test_stream_end(buffer, len, 0)) {
         len -= 2;  // TODO: use stream_end_size() + postamble_size()
         end = true;
-        printk("BJONES save_stream END DETECTED\n");
+        //printk("BJONES save_stream END DETECTED\n");
     }
 
     if (len > 0) {
@@ -482,7 +488,7 @@ int save_stream(char *filename, char *buffer, size_t len)
         parser.state = PARSER_IDLE;  // trigger parser state reset
         return ide_reply(NO_ERROR, "\"ok\"");
     }
-    printk("BJONES save_stream END\n");
+    //printk("BJONES save_stream END\n");
     return ret;
 }
 
@@ -491,7 +497,7 @@ static void ide_cmd_save(char *buf, size_t len)
 {
     int ret = 0;
     char *filename = NULL;
-    printk("BJONES ide_cmd_save..\n");
+    //printk("BJONES ide_cmd_save..\n");
     IDE_DBG("\r\nInvoking save...");
 
     switch (parser.state) {
@@ -499,23 +505,24 @@ static void ide_cmd_save(char *buf, size_t len)
             filename = buf;
             ret = parse_filename(buf, len, 1);  // file name is arg 1
             if (ret < 0) {
-                printk("BJONES ide_cmd_save FAIL\n");
+                //printk("BJONES ide_cmd_save FAIL\n");
                 return;
             }
-            printk("BJONES PARSE_ARG_FILENAME %s, %i\n", buf, ret);
+            //printk("BJONES PARSE_ARG_FILENAME %s, %i\n", buf, ret);
             skip_size(&buf, &len, ret);
             // fall through
         case PARSE_ARG_STREAM:  // subsequent invocations fall here
-            printk("BJONES PARSE_ARG_STREAM %s, %s, %d\n", filename, buf, len);
+            //printk("BJONES PARSE_ARG_STREAM %s, %s, %d\n", filename, buf, len);
             save_stream(filename, buf, len);
-             ide_reply(NO_ERROR, "\"saved data\"");
+            //printk("BJONES DONE SAVING STREAM!! \n");
+            // ide_reply(NO_ERROR, "\"saved data\"");   BJONES DON'T DO THIS HERE BECAUSE IT SENDS IT FOR EVERY LINE
             return;
         default:
             printk("BJONES SAVE FAIL\n");
             ide_reply(ERROR_GENERIC, "\"Parser error.\"");
             return;
     }
-    printk("BJONES ide_cmd_save DONE!\n");
+    //printk("BJONES ide_cmd_save DONE!\n");
 }
 
 // Run the given program file and send back the status.
@@ -530,14 +537,17 @@ static void ide_cmd_run(char *buf, size_t len)
     }
     skip_size(&buf, &len, ret);
 
-    printk("Filename: %s\n", filename);
+    printk("** BJONES Filename: %s\n", filename);
     IDE_DBG("Filename: %s", filename);
 
     if (!fs_exist(filename)) {
+        printk("BJONES RUN FAIL NO FILE\n");
         ide_reply(ERROR_FILE, "\"File not found.\"");
         return;
     }
+    printk("BJONES BEFORE RUN\n");
     javascript_run_code(filename);
+    printk("BJONES AFTER RUN\n");
     ide_reply(NO_ERROR, "ok");
 }
 

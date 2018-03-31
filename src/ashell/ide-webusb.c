@@ -17,12 +17,6 @@
 #include "ide-comms.h"
 #include "ide-webusb.h"
 
-#define IDE_DBG(...) do { \
-    ide_spool( __VA_ARGS__ ); \
-    ide_spool_flush(); \
-} while(0)
-
-
 /* WebUSB Platform Capability Descriptor */
 static const u8_t webusb_bos_descriptor[] = {
   /* Binary Object Store descriptor */
@@ -47,6 +41,11 @@ static const u8_t webusb_origin_url[] = {
   0x11, 0x03, 0x00,
   'l', 'o', 'c', 'a', 'l', 'h', 'o', 's', 't', ':', '8', '0', '0', '0'
 };
+
+// Store the receive callback provided by the application here.
+static webusb_process_cb webusb_cb = NULL;
+// Method to reply when finished parsing, and ready for more data.
+static webusb_process_ack webusb_ack = NULL;
 
 /**
  * @brief Custom handler for standard requests in
@@ -118,17 +117,27 @@ static u32_t webusb_rx_index = 0;
 // Release an rx buffer (from the ide_process).
 static void webusb_release_buffer(webusb_rx_buf_t *buf)
 {
-    printk("BJONES webusb_release_buffer %s\n", buf->data);
+    //printk("BJONES webusb_release_buffer %s\n", buf->data);
     atomic_set(&(buf->lock), 0);
     buf->length = 0;
     memset(buf->data, 0, WEBUSB_RX_BUFFER_SIZE);
+    if (webusb_ack) {
+        for (int i = 0; i < WEBUSB_RX_POOL_SIZE; i++) {
+            buf = &(webusb_rx_buffers[i]);
+            if (atomic_get(&(buf->lock)) == 1) {
+                return; // There is at least one message to go, don't ACK
+            }
+        }
+        // No pending messages, send the ACK
+        webusb_ack();
+    }
 }
 
 // Provide a buffer to the WebUSB driver. Return a pointer to the data part.
 u8_t *get_rx_buf()
 {
     for (int i = 0; i < WEBUSB_RX_POOL_SIZE; i++) {
-        printk("BJONES RX INDEX = %i\n", webusb_rx_index);
+        //printk("BJONES RX INDEX = %i\n", webusb_rx_index);
         webusb_rx_buf_t *buf = &(webusb_rx_buffers[webusb_rx_index++]);
         webusb_rx_index %= WEBUSB_RX_POOL_SIZE;
         if (atomic_get(&(buf->lock)) == 0) {
@@ -154,10 +163,10 @@ static struct k_fifo rx_queue;
 // Consume a buffer (part of a message) in WebUSB driver context.
 static void webusb_receive(u8_t *data, size_t len)
 {
-  printk("BJONES webusb_receive\n");
+  //printk("BJONES webusb_receive\n");
     webusb_rx_buf_t *buf = buffer_from_data(data);
     buf->length = len;
-    printk("BJONES webusb_receive got %s\n", buf->data);
+    //printk("BJONES webusb_receive got %s\n", buf->data);
     k_fifo_put(&rx_queue, buf);
 }
 
@@ -169,31 +178,28 @@ static struct webusb_req_handlers req_handlers = {
   .get_buffer = get_rx_buf
 };
 
-// Store the receive callback provided by the application here.
-static webusb_process_cb webusb_cb = NULL;
-
-void webusb_init(webusb_process_cb cb)
+void webusb_init(webusb_process_cb cb, webusb_process_ack ack)
 {
   k_fifo_init(&rx_queue);
   webusb_cb = cb;
+  webusb_ack = ack;
   webusb_register_request_handlers(&req_handlers);
 }
 
 void webusb_receive_process()
 {
-  printk("BJONES webusb_receive_process\n");
-  IDE_DBG("\r\nBJONES starting webusb_receive");
+  //printk("BJONES webusb_receive_process\n");
   webusb_rx_buf_t *buf;
   while ((buf = (webusb_rx_buf_t *) k_fifo_get(&rx_queue, K_FOREVER))) {
     if (webusb_cb) {
-      printk("BJONES webusb_receive_process %s\n", buf->data);
+      //printk("BJONES webusb_receive_process %s\n", buf->data);
         webusb_cb(buf->data, buf->length);
         webusb_release_buffer(buf);
     }
-    else
-      printk("BJONES no callback!\n");
-    //k_yield();    //BJONES DO I NEED THIS?
-    printk("BJONES webusb_receive_process DONE!!\n");
+    // else
+      //printk("BJONES no callback!\n");
+    k_yield();    //BJONES DO I NEED THIS?
+    //printk("BJONES webusb_receive_process DONE!!\n");
   }
   printk("----BJONES webusb_receive_process completed\n");
 }
