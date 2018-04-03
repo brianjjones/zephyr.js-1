@@ -190,7 +190,7 @@ void webusb_receive_process()
 {
   //printk("BJONES webusb_receive_process\n");
   webusb_rx_buf_t *buf;
-  while ((buf = (webusb_rx_buf_t *) k_fifo_get(&rx_queue, K_FOREVER))) {
+  while ((buf = (webusb_rx_buf_t *) k_fifo_get(&rx_queue, K_NO_WAIT))) {
     if (webusb_cb) {
       //printk("BJONES webusb_receive_process %s\n", buf->data);
         webusb_cb(buf->data, buf->length);
@@ -201,5 +201,5 @@ void webusb_receive_process()
     k_yield();    //BJONES DO I NEED THIS?
     //printk("BJONES webusb_receive_process DONE!!\n");
   }
-  printk("----BJONES webusb_receive_process completed\n");
+  //printk("----BJONES webusb_receive_process completed\n");
 }
