@@ -117,7 +117,6 @@ static u32_t webusb_rx_index = 0;
 // Release an rx buffer (from the ide_process).
 static void webusb_release_buffer(webusb_rx_buf_t *buf)
 {
-    //printk("BJONES webusb_release_buffer %s\n", buf->data);
     atomic_set(&(buf->lock), 0);
     buf->length = 0;
     memset(buf->data, 0, WEBUSB_RX_BUFFER_SIZE);
@@ -137,16 +136,13 @@ static void webusb_release_buffer(webusb_rx_buf_t *buf)
 u8_t *get_rx_buf()
 {
     for (int i = 0; i < WEBUSB_RX_POOL_SIZE; i++) {
-        //printk("BJONES RX INDEX = %i\n", webusb_rx_index);
         webusb_rx_buf_t *buf = &(webusb_rx_buffers[webusb_rx_index++]);
         webusb_rx_index %= WEBUSB_RX_POOL_SIZE;
         if (atomic_get(&(buf->lock)) == 0) {
           atomic_set(&(buf->lock), 1);
           return buf->data;
         }
-        printk("!!!! ATOMIC LOCK STILL SET for %s\n", buf->data);
     }
-    printk("BJONES RUH ROH OUT OF BUFFERS!\n");
     return NULL;
 }
 
@@ -163,10 +159,8 @@ static struct k_fifo rx_queue;
 // Consume a buffer (part of a message) in WebUSB driver context.
 static void webusb_receive(u8_t *data, size_t len)
 {
-  //printk("BJONES webusb_receive\n");
     webusb_rx_buf_t *buf = buffer_from_data(data);
     buf->length = len;
-    //printk("BJONES webusb_receive got %s\n", buf->data);
     k_fifo_put(&rx_queue, buf);
 }
 
@@ -188,18 +182,12 @@ void webusb_init(webusb_process_cb cb, webusb_process_ack ack)
 
 void webusb_receive_process()
 {
-  //printk("BJONES webusb_receive_process\n");
   webusb_rx_buf_t *buf;
   while ((buf = (webusb_rx_buf_t *) k_fifo_get(&rx_queue, K_NO_WAIT))) {
     if (webusb_cb) {
-      //printk("BJONES webusb_receive_process %s\n", buf->data);
         webusb_cb(buf->data, buf->length);
         webusb_release_buffer(buf);
     }
-    // else
-      //printk("BJONES no callback!\n");
-    k_yield();    //BJONES DO I NEED THIS?
-    //printk("BJONES webusb_receive_process DONE!!\n");
+    k_yield();
   }
-  //printk("----BJONES webusb_receive_process completed\n");
 }
